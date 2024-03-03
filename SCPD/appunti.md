@@ -35,45 +35,35 @@ Questa introduzione mira a fornire una panoramica concisa e informativa sul calc
 
 ## Principio di Località
 
-le cache sfrutta la proprità di località del codice:
+La gestione efficace della cache sfrutta il principio di località del codice, essenziale per ottimizzare l'accesso ai dati:
 
-- **località spaziale** : se accedo a un dato, è probabile che acceda a dati vicini
-- **località temporale** : se accedo a un dato, è probabile che ci riacceda presto
+- **Località Spaziale** : l'accesso a un dato aumenta la probabilità di accedere a dati adiacenti. Questo principio è sfruttato efficacemente da strutture dati come gli array, soprattutto quando si accede sequenzialmente agli elementi.
+- **Località Temporale** : se un dato viene accesso una volta, è probabile che venga riaccesso in breve tempo. Cicli come i `for` possono capitalizzare su questo principio se organizzati correttamente.
 
-I cicli for e gli array sfruttano bene questo principio di località se scritti nell'ordine giusto
+La RAM consente accessi in qualsiasi ordine, ma non tutti gli accessi hanno lo stesso costo. Cicli sequenziali, come quelli creati con l'istruzione `for`, suggeriscono al compilatore un accesso sequenziale ai dati, permettendo tecniche di prefetching, ovvero il caricamento anticipato dei dati in cache basato sulla predizione degli accessi futuri.
 
-RAM, non accedo a caso alla memoria, ma random significa che posso accedere in qualsiasi ordine, ovviamente il costo non è uguale per tutti i tipi di accesso.
+Le interruzioni anticipate dei cicli (`break`) possono complicare il prefetching, poiché il compilatore non può prevedere con certezza l'uscita anticipata dal ciclo.
 
-Usando il for suggeriamo al compilatore che stiamo accedendo in modo sequenziale, il compilatore vuole sapere qual'è la probabilità di accedere a i + 1 dopo aver acceduto a i, se è alta allora il compilatore può fare prefetching, ovvero caricare in anticipo i dati in cache.
-
-I break possono influenzare negativamente il prefetching, il compilatore non sa se uscirò dal ciclo o no, quindi non può fare prefetching.
-
-Questo è il motivo per cui esistono 3 costrutti per fare cicli. Ognuno di essi ha una motivazione diversa.
+## Parallelismo nei Cicli
 
 Nel programmi paralleli l'ottimizzazione del compilatore protrebbe dare risultati diversi, in quanto otimizza come se fosse un programma sequenziale.
 
-Una regola pratica per decidere quale for parallelizzare è parallelizzare il for più esterno, in quanto è quello più grosso e quello che ci mette più tempo. Mentre quello interno è più piccolo e viene eseguito più volte, ma ha un costo minore.
+Nel contesto del parallelismo, la scelta di quale ciclo parallelizzare è critica. Generalmente, è preferibile parallelizzare il ciclo più esterno per massimizzare l'efficienza, dato che comporta l'esecuzione parallela di compiti maggiori rispetto ai cicli interni, che sono più granulari e numerosi ma con un costo inferiore per iterazione.
 
-- **Esterno** : 4096 task in parralelo con tempo 2 alla 24 t
-  - quindi poche cose grosse in parallelo
-- **Interno**: 2 alla 24 task in parallelo con tempo 1 t
-  - quindi tante cose piccole in parallelo
+- **Ciclo Esterno** : esecuzione parallela di task più grandi, con tempi più lunghi ma minor frequenza.
+- **Ciclo Interno** : esecuzione parallela di numerosi task più piccoli, con minor tempo di esecuzione ma alta frequenza.
 
-Molto spesso basta quindi parallelizzare il for più esterno.
+Parallelizzare un algoritmo sequenziale su n core non garantisce un
+miglioramento proporzionale delle prestazioni (speedup di n), ma si
+ottiene sempre un risultato minore o uguale a n a causa dell'overhead della gestione del parallelismo.
 
-Se ho un algortimo sequenziale, lo parallelizzo su n core, non posso aspettarmi di ottenere un speedup di n, il risultato sarà sempre minore o uguale a n.
+## Gerarchia della Cache nei Sistemi Multicore
 
-## multicore cache hierarchy
+- **LLC (L3) cache** : condivisa tra tutti i core, non per forza un pezzo unico, ma condivisa.
+- **L2 cache** : Specifica per coppie di core, facilita un accesso più rapido rispetto all'LLC per quei core.
+- **L1 cache** : Dedicata a ciascun core, offre la latenza più bassa per l'accesso ai dati.
 
-- **LLC (L3) cache** : condivisa tra tutti i core, non per forza un pezzo unico, ma condivisa
-- **L2 cache** : condivisa tra due core
-- **L1 cache** : cache dedicata a ogni core
-
-Un altro livello di pararrellismo è quello di usare il calcolo vettoriale all'interno di un core, ovvero fare più operazioni in parallelo all'interno di un core.
-Anche chiamato multi-media extension (SSE, AVX, ecc), chiamato così perchè inizialmente era stato pensato per fare operazioni su immagini e video. (encoding, decoding, ecc) usano un processore dedicato vettoriale.
-Può essere usato anche per oltre operazioni. A livello di codice devo andare a usare le istruzioni del processore specifico per il tipo di processore che sto usando.
-Per questo viene usato per operazione specifiche e non per tutto il codice.
-Viene usato da pythorch, tensorflow, ecc.
+Il parallelismo può essere esteso all'interno dei singoli core attraverso il calcolo vettoriale, che consente di eseguire più operazioni simultaneamente su set di dati. Questo approccio, supportato da estensioni hardware come SSE e AVX, trova applicazione in ambiti specifici come l'elaborazione di immagini e video, ma anche in librerie di calcolo scientifico come PyTorch e TensorFlow.
 
 # Classificazione di archittetture parallele
 
@@ -100,7 +90,6 @@ Divisione tra:
   - esempio: for(i = 0; i < n; i++) a[i] = b[i] + c[i];
     - eseguo la stessa operazione su tutti gli elementi di b e c
 - **MISD** : Multiple Instruction Single Data
-  - Più flussi di istruzioni operano su un singolo flusso di dati, non molto usato, non chiaro come possa essere usato
+  - Più flussi di istruzioni operano su un singolo flusso di dati, rarità nell'implementazione pratica.
 - **MIMD** : Multiple Instruction Multiple Data
-  - Più flussi di istruzioni operano su più flussi di dati, macchina parallela
-  - ogni core esegue un flusso di istruzioni indipendente
+  - Il modello più flessibile e comune nelle architetture parallele, con più core che eseguono flussi di istruzioni indipendenti su flussi di dati distinti.
