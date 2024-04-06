@@ -70,7 +70,7 @@ Problemi:
 - Per accedere ad un dato devo necessariamente fare uso della rete, pregiudicando le prestazioni
 - Uso delle risorse del client
 - Difficile scalabilità, c'è un bottleneck sui dati
-  - Scalabilità: capacità di un sistema di crescere in modo lineare con l'aumento delle risorse
+  - Scalabilità: capacità di un sistema di aumentare o diminuire di scala in funzione delle necessità e disponibilità. (scalabilità di carico)
 - Manutenzione costosa
 - Accesso ai dati poco protetto, il client accede direttamente ai dati
 
