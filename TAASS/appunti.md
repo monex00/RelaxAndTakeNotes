@@ -48,8 +48,8 @@ SERVER - NETWORK - CLIENT
 
 Caratteristiche:
 
-    - Two phase commit: garantisce che i dati siano consistenti
-    - Standards: SQL, ODBC, JDBC
+- Two phase commit: garantisce che i dati siano consistenti
+- Standards: SQL, ODBC, JDBC
 
 Vantaggi:
 
@@ -121,7 +121,7 @@ Limiti:
 - pochi standard
 - pochi linguaggi di programmazione solo 4GL
 
-## Pabortrincipali servizi di un TP-Monitor
+## Principali servizi di un TP-Monitor
 
 In caso di sovraccarico i TP-Monitor possono allocare e duplicare i servizi di un'applicazione su più macchine fisiche diverse.
 
