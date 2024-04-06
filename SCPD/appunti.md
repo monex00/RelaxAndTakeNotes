@@ -59,9 +59,9 @@ ottiene sempre un risultato minore o uguale a n a causa dell'overhead della gest
 
 ## Gerarchia della Cache nei Sistemi Multicore
 
-- **LLC (L3) cache** : condivisa tra tutti i core, non per forza un pezzo unico, ma condivisa.
-- **L2 cache** : Specifica per coppie di core, facilita un accesso più rapido rispetto all'LLC per quei core.
-- **L1 cache** : Dedicata a ciascun core, offre la latenza più bassa per l'accesso ai dati.
+- **LLC (L3) cache** : condivisa tra tutti i processori, non per forza un pezzo unico, ma condivisa.
+- **L2 cache** : Dedicata a ciascun processore, facilita un accesso più rapido rispetto all'LLC per quei core. (Una per processore)
+- **L1 cache** : Dedicata a ciascun core, offre la latenza più bassa per l'accesso ai dati. (Una per core)
 
 Il parallelismo può essere esteso all'interno dei singoli core attraverso il calcolo vettoriale, che consente di eseguire più operazioni simultaneamente su set di dati. Questo approccio, supportato da estensioni hardware come SSE e AVX, trova applicazione in ambiti specifici come l'elaborazione di immagini e video, ma anche in librerie di calcolo scientifico come PyTorch e TensorFlow.
 
@@ -91,5 +91,489 @@ Divisione tra:
     - eseguo la stessa operazione su tutti gli elementi di b e c
 - **MISD** : Multiple Instruction Single Data
   - Più flussi di istruzioni operano su un singolo flusso di dati, rarità nell'implementazione pratica.
+  - Usare algortimi diversi sullo stesso dato per motivi di **robustezza**, calcolo lo stesso dato in modi diversi e confronto i risultati.
+  - Un esempio potrebbe essere il Bagging nel machine learning, dove si addestrano diversi modelli su un singolo dataset e si aggregano i risultati.
 - **MIMD** : Multiple Instruction Multiple Data
   - Il modello più flessibile e comune nelle architetture parallele, con più core che eseguono flussi di istruzioni indipendenti su flussi di dati distinti.
+  - La memoria non viene condivisa.
+
+Come si programma una memoria? la memoria ha due 2 api:
+
+- lettura: signature `read(addr: int) -> int`
+- scrittura: signature `write(addr: int, value: int) -> void`
+
+Se la memoria è una shared memory, le api sono 3:
+
+- lettura: signature `read(addr: int) -> int`
+- scrittura: signature `write(addr: int, value: int) -> void`
+- lock: signature `lock(addr: int) -> void` (verificare?)
+
+# Lezione 5 (6/03) - 4 Classification
+
+## Parallel Architectures
+
+Usando i processi devo dicedere prima come e dove allocare le strutture dati in maniera che siano disponibili a tutti i processi.
+Per i thread invece posso anche pensarci dopo, in quanto condividono lo stesso spazio di memoria.
+
+## shared memory
+
+Permettono di leggere e scrivere da due o più processi.
+Generalmente un processo non può leggere o scrivere la memoria di un altro processo.
+Avviene tramite scambio di messaggi, viene inviato il messaggio e poi esso viene scritto in memoria.
+
+## Distributed memory
+
+Ogni processore ha la propria memoria e attraverso una interconnection network possono comunicare tra loro.
+
+## memory consistency & cache coherence
+
+Il problema della consistenza della memoria è che se due processi leggono la stessa locazione di memoria, non è garantito che leggano lo stesso valore.
+L'accesso alla memoria non è una operazione atomica:
+
+- il processore fa una richiesta di lettura
+- la memoria riceve dopo un po' la richiesta
+- ricerca il dato, prima trova la riga e poi il dato
+- risponde al processore
+- dopo un po' il processore riceve la risposta
+
+Il tutto avviene tramite un dialogo sul bus.
+Se ho più processori le operazioni si sovrappongono e quindi non è garantito che i processori leggano lo stesso valore.
+Ma soprattutto non è garantito che se un processo fa una richiesta di lettura prima allora riceva il dato prima rispetto a un altro processo.
+
+Il problema della consistenza della memoria è capire se esiste se deve esistere un ordine tra le richieste alla memoria, capire quindi come avvengono le operazioni di lettura e scrittura viste dalla parte della memoria.
+è possibile che l'effetto della memoria sia diverso rispetto a quello scritto nel programma a causa appunto di questi ritardi.
+
+## Modello di consistenza sequenziale
+
+Se un processore scrive un dato e poi legge il dato, il dato letto deve essere uguale al dato scritto.
+Nessuna delle macchine di oggi usa questo modello, in quanto è molto restrittivo; con due memorie non sono più in grado di garantire un ordine totale, ma solo uno parziale.
+
+## Cache coherence
+
+Con la cache, il problema della consistenza della memoria diventa più complesso.
+In una cache di un processore A = 1, in un'altra cache di un processore A = 2.
+Fare in modo che il programmatore non abbia mai la percezione che esistano valori diversi della stessa variabile in cache diverse.
+Riguarda copie multiple dello stesso indirizzo, vorrei che tutte le copie siano aggiornate allo stesso valore.
+La cache coherence puo' essere risolto a livello hardware, le due cache comunicano attraverso un protocollo al fine di decidere quale valore è il corretto.
+Più sono le cache più questo dialogo diventa complicato e costoso (una macchina con tanti core porta il core ad andare più lentamente).
+Ogni processore scalabile ha un numero limite di socket supportati, in quanto altrimenti la cache coherence diventerebbe troppo costosa.
+
+## shared memory fondamenti
+
+- scambio di dati (shm/msg)
+- sincronizzazione, avviene tramite msg
+  Un msg porta informazioni sia dei dati che temporali, in quanto se un processo manda un msg ad un altro processo, il secondo processo deve essere pronto a ricevere il msg.
+  Come faccio a sapere se un processo ha scritto un dato per un altro processo? e come faccio a sapere in che punto della memoria è stato scritto?
+  Servirebbe un semaforo ma al livello di memoria non esiste.
+  Un messaggio è una forma di sincronizzazione un po' lasca perchè non so quanto prima il messaggio è stato scritto.
+  Se invio un messaggio di sincronizzazione e io parto subito dopo, il processo che riceve il messaggio parte dopo di me, ma non so quanto dopo di me.
+
+### Thread
+
+Un processo è un programma in esecuzione, composto da un Process Control Block (PCB) che contiene informazioni come lo stato del processo, la memoria allocata, lo stack, ecc.
+
+Ongi processo ha uno spazio logico di indirizzamento, quindi ogni processo ha la sua memoria. Due processi possono riferirsi alla stesso indirizzo logico ma non stanno parlando della stessa locazione di memoria.
+
+Un thread è un processo leggero, condividono lo stesso spazio di memoria, quindi se un thread scrive un dato, un altro thread può leggerlo. L'indirizzo logico si riferisce alla stessa locazione di memoria.
+Hanno un loro Process control block chiamato TCB (Thread Control Block).
+Ogni thread ha un suo stack, ma condividono lo stesso heap.
+
+I processi sono generalmente indipendenti, mentre i thread sono oggetti cooperanti.
+
+Il modello Posix permetto di creare e distruggere thead attraverso operazioni di fork e join.
+
+è necessario definire operazioni di sincronizzazione.
+
+## distributed memory fondamenti
+
+- ridurre il tempo/costi di comunicazione
+- dal punto di vista elettronico il numero di connessioni cresce in maniera quadratica rispetto al numero di processori
+
+Il modo di fare parallelismo avviene tramite la creazione di diversi processi che non condividono la memoria e quindi comunicano tramite messaggi (es. Pipe, o attraverso una rete).
+
+é composto da nodi che a loro volta possono essere multi-core.
+Comprendo quindi l'uso di un livello a shared memory e un livello a scambio di messaggi.
+
+I linguaggi di programmazione non hanno un costrutto per la comunicazione tra processi, ma è necessario utilizzare delle librerie di SO per fare ciò esempio: Pipeline o Socket.
+
+Si è cercato di astrarre il problema creando una libreria chiamata MPI (Message Passing Interface) che permette di scrivere programmi paralleli in maniera trasparente rispetto all'architettura sottostante.
+
+Si distinguono per la tipologia della rete e per la loro diffusione geografica (stessa stanza, stesso edificio, stesso paese, stesso continente, mondo). in funzione di questi aspetti possono essere chiamati in diversi modi: Cluster, Cloud, ecc...
+
+# Lezione 6 (8/03) -
+
+## thread cooperativi
+
+Sono thread che volontariamnte lascia il controllo ad un altro thread, quindi non è il sistema operativo a decidere quando un thread deve essere eseguito.
+
+## stencil computation in shared memory
+
+Il programmatore deve dividire la memoria in parti e decidere quali parti devono essere allocate in quale processo.
+Riguarda spesso array divisi a pezzi e distrubuiti tra i processi.
+
+## halo swapping
+
+Se ho una matrice divisa in pezzi, ogni pezzo ha un bordo (alone), e questo bordo è la copia del bordo di un altro pezzo. (deciso staticamente dal programmatore, devi pensarci prima) (migliore in termini di prestazione).
+
+Se ho una shared memory è molto più semplice, in quanto posso accedere direttamente alla cella di memoria, perchè è divisa solo logicamente. (Peggiore in termini di prestazione, posso avere dei punti di congestione sulla memoria). (puo' essere decisono in maniera dinamica).
+
+## Ricapitolando
+
+- Regole esame e raccomandazioni corso
+- Introduzione sulla motivazione del parallel computing
+- Introduzione alle hardware platform
+- Programming model
+  - SHM (lock/unlock, read/write)
+    - lock free programming (approfondimento)
+  - Message passing (sincronizzazione tramite messaggi)
+  - GPU
+  - Come creare thread
+  - Come scambiare dati
+  - Come sincronizzarsi
+
+## Shared memory
+
+### Memory Wall o Memory Gap
+
+Inizialmente il tempo per accedere alla memoria e il tempo per la computazione erano simili e bilanciati.
+Oggi il tempo per accedere alla memoria è molto maggiore rispetto al tempo per fare la computazione, in quanto i processori sono cresciuto di molto in termini di velocità, mentre la memoria no. Le memoria si sono sviluppate per essere più grandi e non più veloci. (Memory Wall o Memory Gap).
+
+La chache L3 è sia condivisa tra core che distribuita tra nodi (diversi socket).
+
+## hyper threading
+
+- memoria
+- fetch
+- decode
+- execute
+- write
+
+un processore con un core e due thread è come se avessi due core, tuttavia nella pipeline di prima ho un solo execute, quindi non ho un vero parallelismo.
+Non tutte le istruzioni arrivano in profondità nella pipeline, per migliorare replico (più thread) la pipeline sono all'inizio, le istruzioni che arrivano in profondità non vengono eseguiti in parallelo da un certo punto in poi.
+
+# Lezione 7 (13/03)
+
+## riassunto
+
+La cache non va veloce come i registri della cpu che eseguono le operazioni nello stesso ciclo di clock della cpu. Le cache magari ce ne mettono due:
+
+- un ciclo per tradurre l'indirizzo logico in indirizzo fisico
+- un ciclo per leggere il dato
+
+Working set: insieme degli indirizzi acceduti da un programma, da un algoritmo o da una parte di algoritmi.
+
+La cache funziona bene se agli stessi dati ci accedo più volte. La soluzione è il tiling in cui si divide la matrice in sottomatrici più piccole, in modo che le sottomatrici siano piccole e quindi ci sia una maggiore probabilità che stiano in cache.
+
+Principio di località: se accedo a un dato, è probabile che acceda a dati vicini.
+Permette la costruzione di gerarchie di memoria. (più livelli di caching)
+Più si arriva vicino al processore più si ha una memoria più veloce ma generalmente più piccola (piccola per via della tecnologia, potrebbe anche essere della stessa dimensione ma più veloce).
+
+Quando ho un miss non richiedo un singolo dato al livello successivo ma una intera linea di cache, la dimensione della linea dipende da quanto probabilità di avere località spaziale ho e da quanto costa spostare i dati e ovviamente dalla dimensione della cache stessa.
+l1 avrà linee più piccole di l2 e l2 avrà linee più piccole di l3.
+
+Lo scambio costra quanto una funzione lineare affine, si ha un costo costante e poi cresce linearmente sulla base della dimensione del dato.
+
+L'indirizzamento del sistema non è a byte, ma a word. quando è grande una word? dipende dal processore, ma generalmente è di 64 bit. una linea generalmente è di 64 byte ovvero 8 word.
+
+## Cache measurement
+
+Si hanno due tempistiche:
+
+- hit time: tempo per accedere alla cache
+- miss penalty: tempo per accedere alla memoria principale
+
+Solitamente sono probabilità hit = 1 - probabilità miss.
+
+- CPU time: numeri di cicli di clock che servono per eseguire un programma.
+  = clock cycle \* clock cycle time
+- Clock cycle = IC \* CPI
+- IC = numero di istruzioni (a livello assembly)
+  - IC = IC_cpu + IC_mem
+- CPI = numero di cicli di clock per istruzione
+  - CPI è la media dei cicli di clock per istruzione
+  - CPI = clock cycle / IC
+  - se CPI è 16 allora vengono eseguite 16 istruzioni in un ciclo di clock
+  - CPI è un dato che cattura anche il numero di istruzioni dell'algoritmo perchè è una media
+- Clock cycle time = tempo per eseguire un ciclo di clock
+- CPI puo' essere scomposto: (IC_cpu \ IC) \* CPI_cpu + (IC_mem \ IC) \* CPI_mem
+  - CPI_cpu = numero di cicli di clock per istruzione della cpu
+  - CPI_mem = numero di cicli di clock per istruzione della memoria
+
+Più è grande la line chache più ho probabilità di avere località spaziale, ma più è grande il costo di spostare i dati.
+
+## RISC vs CISC
+
+Sono un modo di definere il set di istruzioni di un processore.
+
+- RISC: Reduced Instruction Set Computer
+
+  - poche istruzioni
+  - esempio: ARM
+  - poco più di 100 istruzioni
+
+- CISC: Complex Instruction Set Computer
+
+  - molte istruzioni, molto varie.
+  - esempio: x86 (AMD, Intel)
+  - più di mille istruzioni
+  - il compilatore deve scegliere tra tante istruzioni, quindi è più complesso, le istruzioni non costano tutte ugualmente.
+  - ci sono operazioni che variano solo per la dimensione del formato, a 16 bit, a 32 bit, a 64 bit, ecc...
+
+Quando leggo una istruzione non so precisamente quante parole di memoria servono, se ho una istruzione a 64 bit che usa 3 indirizzi a 64 bit, allora mi servono 3 parole di memoria rendendo tutto più complesso.
+Es. add a, b, c
+
+L'idea è che ogni istruzione deve stare in una parola, facendo dei sacrifici: non ci metto gli indirizzi se non uno.
+Ho due istruzioni specializzate per le operazioni sugli indirizzi, load e store.
+load a
+load b
+(a e b sui registri, indizzi a 8 bit, più piccoli)
+add r1, r2, r3
+store r3, c
+
+in questo modo si ho istruzioni più piccole però ne avrò bisogno di più per fare la stessa cosa.
+
+Con RISC il compilatore sa esattamente quanto costa ogni istruzione, quindi è più facile fare ottimizzazioni.
+
+## Organizzazione della cache
+
+- Direct Mapped (usata per le istruzioni, non istruzioni load e store)
+  - ogni blocco di memoria può essere messo in una sola posizione della cache
+  - se ho un blocco di memoria che va in una posizione della cache, e poi ne arriva un altro che va nella stessa posizione, il primo viene buttato via.
+  - è molto veloce, ma ha un alto numero di miss
+- n-way set associative (usata per i dati, istruzioni load e store)
+  - ogni blocco di memoria può essere messo in n posizioni della cache
+  - è più lento, ma ha un numero di miss minore
+
+## Cache write policy
+
+La scrittura è più complessa, esistono due tipi di policy:
+
+- Write through:
+  - scrivo sia in cache che a tutti i livelli precedenti fino alla memoria.
+  - è più lenta, ma più sicura
+- Write back:
+  - scrivo in cache e marko quella linea come scritta.
+  - la scrittura verrà propagata alla memoria solo quando la linea verrà buttata via o quando un altro core fa richiesta di lettura.
+  - quei dati che non servono a nessuno non vengono mai scritti in memoria se non alla fine del programma.
+  - se qualcuno deve leggere deve attendere che la scrittura sia finita.
+  - è più veloce, ma meno sicura
+
+## Cache coherence
+
+Se ho due copie di due cache diverse il problema è mantenerle coerenti.
+Esistono dei protocolli per risolvere questo problema.
+Il problema maggiore è se entrambe le copie sono state modificate, quale delle due è quella corretta?
+
+gestione della inconsistenza della memoria:
+
+- MESI: Modified, Exclusive, Shared, Invalid
+  - associare a ogni linea di cache uno dei quattro stati
+  - se voglio scrivere deve essere in stato E, le altre copie devono essere portati a I (la vera copia ce l'ho io, le altre sono invalidi)
+
+# Lezione 8 (20/03)
+
+Outline:
+
+- come allocare risorse su un super computer
+- come eseguire un programma su un super computer
+- come misurare le prestazioni di un programma su un super computer
+
+## Super computer
+
+Sistemi a code, se lanci un programma questo va in coda e viene eseguito quando è il suo turno.
+Utilizzo batch, diverso dal on demand, in cui si ha un server che è sempre acceso e pronto a rispondere alle richieste.
+
+SLURM: Simple Linux Utility for Resource Management
+DBS: Distributed Batch System
+
+Faccio login sul sitema, chiamo il sistema di code per chiedere di eseguire l'esperimento. questi fanno 3 cose:
+
+- allocano risorse (1 nodo, 1 nodo e 3 core), appena ci sono me le allocano in maniera escusiva
+- gestiscono la coda, per priorità, o code con massime grandezze di risorse richiedibili, oppure code interattive
+- creare report sull'uso delle risorse
+
+## SLURM
+
+Una partizione è una coda che ha determinate caratteristiche, lo scheduling viene fatto su più code, le code lo sceglie l'utente.
+
+- sinfo: mostra lo stato delle partizioni
+- salloc -p `<partizione>` : per code interattive
+- sbatch -n `<numero di core>` -p `<partizione>` `<script>` : per code batch
+
+Una volta allocato il nodo, ci entro dentro tramite ssh, e poi eseguo il programma tramite srun.
+
+## Algoritmi di scheduling:
+
+- Backfill algorithm
+  Se ho un programma che richiede 10 core e un programma che richiede 5 core, e ho 10 core liberi, il programma da 5 core viene eseguito subito, in quanto so che il programma da 10 core non può essere eseguito subito.
+  Esegue prima un programma piccolo in modo da liberare risorse per un programma più grande.
+  Il tempo di esecuzione va specificato nel comando con il flag -time. Se non lo specifico mette la durata massima, 24 o 48 ore.
+- Priority queue algorithm
+  Assegna una priorità a ogni job, e sceglie il job con la priorità più alta.
+
+Obbiettivo è massimizzare l'utilizzo delle risorse.
+
+## Comandi:
+
+- srun: per eseguire un comando
+- sbatch: per eseguire uno script batch
+- squeue: per vedere i job attualmente in esecuzione
+- scontrol: per controllare i job, mostra metadati sui job
+- scancel: per cancellare un job
+
+## PBS (Portable Batch System)
+
+Fa le stesse cose di SLURM ma con altri comandi. Posso fare tutto tramite un file sh
+
+## System module
+
+Permette di avere varie versione dello stesso software, e di caricare e scaricare moduli.
+
+- module load `<nome del modulo>`: carica un modulo
+- module purge: resetta i moduli
+
+Non permette di gestire bene le dipendenze tra i moduli. La gestione delle dipendenze è lasciato al programmatore.
+
+## SPACK
+
+Gestore di pacchetti per HPC (High Performance Computing), permette di gestire le dipendenze tra i moduli.
+A differenza degli altri, lui compilare i pacchetti e li installa in una directory specifica.
+Su HPC compilare in loco è molto importante per ottimizzare le prestazioni. Il compilatore sa bene come è fatta la ram, la cpu, ecc... e quindi può fare ottimizzazioni specifiche.
+
+## Comandi
+
+- spack list: mostra i pacchetti disponibili
+- spack install `<nome del pacchetto>`@`<version>`: installa un pacchetto
+- spack info `<nome del pacchetto>`: mostra informazioni sul pacchetto, come le versioni disponibili
+- spack find `<nome del pacchetto>`: mostra la versione installata
+- spack find: mostra tutti i pacchetti installati
+
+# Lezione 9 (27/03)
+
+## Sistemi di interconnessione
+
+Collegano sistemi che siano distribuiti, o geograficamente o nello stesso edificio.
+
+- nodi indipendenti (cpu, gpu, memoria)
+- rete di interconnessione
+- memoria sia indepndente sia condivisa
+
+## Cos'è un interconnetion network
+
+è una rete di nodi che permette di comunicare tra loro, è un insieme di nodi e collegamenti tra i nodi.
+Due misure:
+
+- latency: tempo che passa tra l'invio di un messaggio e la ricezione
+  - noload: quando la rete è vuota
+  - underload: quando la rete è utilizzata
+- bandwidth: quanti bit al massimo posso trasmettere in una unità di tempo, (numero di messaggi per unità di clock)
+- throughput: i bit attuali che posso trasmettere in una unità di tempo
+
+Diversi aspetti influenzano le prestazioni:
+
+- routing: come faccio a trovare il percorso migliore
+- controllo di flusso: come i pacchetti da un punto e l'altro si muovono, quanti pacchetti posso inviare
+
+Un semplice bus tra processore e memoria è una rete di interconnessione.
+
+## Tempo invio messaggio:
+
+T_m(k) = T_lat + k \* T_bw
+
+- k: grandezza del messaggio
+- T_lat: tempo di latenza
+- T_bw: tempo di banda
+
+T_lat invece di una costante dovrebbe essere una funzione, in quanto se la rete è vuota il tempo di latenza è minore rispetto a quando la rete è piena.
+
+## Terminology
+
+- Endpoint: sorgente o destinazione di un messaggio, può essere un nodo, uno switch, ecc...
+  - gli endpoint possono anche essere solo di passaggio, fanno semplicemente un forwarding del messaggio senza coinvolgere il processore
+- Link: collegamento tra due endpoint
+- Switch: dispositivo che collega più link.
+
+## Topologie
+
+- Direct network: ogni nodo è collegato a un altro nodo
+- Indirect network: ogni nodo è collegato a uno switch
+
+## Diameter, degree, bisection bandwidth
+
+- Degree: numero massimo di vicini che un nodo può avere
+  - nei linear array è 2, una matrice bidimensionale è 4, tridimensionale è 6, k-dimensionale è 2k
+- Diameter: lunghezza del percorso più lungo tra due nodi
+  - nei linear array è n-1, nel bidimensionale è la radice quadrata di n
+- Bisection bandwidth: numero minimo di link che devono essere rimossi per dividere la rete in due parti uguali. Importante perchè modella il collo di bottiglia della rete, se tutti devono scambiarsi i messaggi devono passare per questo punto. più è grande più è veloce la rete (meno aumento di latenza).
+  - nei linear array è 1, nel bidimensionale è radice di n
+
+## 2D Torus
+
+Migliora il diametro e il bisection bandwidth. è una rete bidimensionale con collegamenti tra i nodi in modo toroidale.
+
+n-ari k-cube: è una rete k-dimensionale in cui ogni nodo ha n vicini.
+2D torus è una rete 4-ari 2-cube.
+
+## Binary tree
+
+Nodi sulle foglie e la struttura sovrastrante sono solo switch.
+
+- diametro: log(n)
+- degree: 3 constante
+- bisection bandwidth: 1 (bottleneck)
+
+## hypercube
+
+## Fat tree
+
+migliora la bisection bandwidth, man mano che si sale si ha più banda disponibile.
+Puo' essere implementata con più switch(fig 2/2), in modo da avere più banda disponibile.
+k-ary n-fly
+k + k/2 switch totali
+
+# Lezione 10 (3/04)
+
+## Dragonfly, caso multi-level
+
+Più livelli, i grandi sistemi normalmente sono costruiti per livelli., per necessità fisiche.
+
+## Modello lineare affine
+
+t_0 + n \* s
+
+## Computation to communication level
+
+La comunicazione puo' essere sovrapposta al calcolo in alcuni casi:
+(sovrapposizone: calcolare durante la comunicazione)
+
+- il produttore lo abbia già prodotto ma il consumatore non ne abbia ancora bisogno.
+
+Il tcp/ip solitamente non permette overlapping perchè fa chiamate al sistema operativo, quindi il sistema operativo deve essere coinvolto in ogni comunicazione, quindi calcolo e comunicazione avvengono in maniera sequenziale.
+
+Invece di avere un buco dove il processore scrive sul buffer(dopo aver finito un calcolo) invece di fare le operazioni di calcolo, demando ad un altro processore la scrittura del buffero ovvero la comunicazione.
+
+Il modo più semplice di organizzare un sistema per fare overlapping è quello di avere un buffer in entrata, un buffer per i calcoli e un buffer in uscita.
+
+Il sistema va organizzato come una pipeline (una catena di montaggio) con stream di dati che scorrono in maniera sequenziale. Senza stream non posso fare overlapping.
+Devo pensare all'algoritmo come se fosse una composizione di funzioni: g(h(f(x))) = g \* h \* f.
+
+Ogni componente della pipeline ha un tempo di servizio Tf
+Il tempo totale è T = tf1 + tf2 + tf3 + tf4 + tf5, la cosa migliore sarebbe quella di prendere il max quindi T = max(tf1, tf2, tf3, tf4, tf5), in questo caso per migliorare sarebbe meglio che i tempi siano il più possibile simili tra loro, tanto prendo sempre il max.
+
+Se aggiungo la comunicazione ho intervalli tf1-tf2, tf2-tf3, tf3-tf4, tf4-tf5, tf5-tf6, il tempo totale è T = max(tf1, tf2-tf3, tf3-tf4, tf4-tf5, tf5), in questo caso il tempo di comunicazione è il tempo di servizio del componente successivo.
+Posso trasformarlo in un problema parallelo, questo significa prende il max, ovviamente non posso farlo per lo stesso dato, per questo ho bisogno di buffer diversi. (guardare disegni su slide)
+
+## Sync vs Async communication
+
+- async degree: il numero di messaggi che il sendere puo' inviare prima che si debba bloccare per attendere la ricezione dal receiver
+
+  - dipende fortemente dalla capacità del canale di comunicazione
+
+- Sync communication: il sender si blocca finchè il receiver non ha ricevuto il messaggio, c'è contemporeaneità tra i due. (tree-way communication)
+
+  - non trasmetto finche il receiver non è pronto
+  - non ricevo finche il sender non è pronto
+
+- Async communication: il sender non si blocca, invia il messaggio e continua a fare altro, il receiver riceve il messaggio quando è pronto.
+  - bloccante: il sender si blocca finche il messaggio non è stato preso in carico dal sistema che si occupa di inviarlo, non necessariamente dal receiver. Quando ho consegnato il messaggio al Sistema operativo ad esempio posso riprendere a fare altro.
+  - non bloccante: il sender invia il messaggio e continua a fare altro, il receiver riceve il messaggio quando è pronto. Il programmatore si occupa di gestire l'invio e la ricezione del messaggio.
