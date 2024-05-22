@@ -64,3 +64,157 @@ Lingue diverse offrono significati diversi e la combinazione di queste può aggi
 Lingue rare: è difficile avere materiale lessicale che permettono di allenare i modelli.
 
 Concentti comunque diversi: se ho la traduzione di un termine in un'altra lingua in realtà non sempre, anche a livello culturale, si intendo lo stesso significato. Ad esempio nel polo nord esistono tanti termini per i diversi tipi di bianco, mentre in Italia ne esistono pochi.
+
+# Lezione 5 06/05
+
+## Text mining e applicazioni
+
+Nlp prima era molto rulebased, adesso è nato un sottoramo del data mining chiamato text mining in cui si usano techiche statistiche e di machine learning per analizzare il testo.
+
+- approcci top-down
+- approcci bottom-up
+
+### vector space model
+
+Una informazione testuale rappresentata attraverso un vettore.
+formule:
+
+- TF IDF
+- COSINE SIMILARITY
+
+- COSINE SIMILARITY: calcola l'angolo dei due vettori che rappresentano le features nello spazio multidimensionale
+
+  - funziona meglio della distanza euclidea perchè prende in considerazione la direzione dei vettori
+
+- TF IDF: permette di popolare i vettori senza tecniche specifiche di machine learning:
+
+  - TF: time frequency, conta quante volte una parola compare in un documento
+  - IDF: inverse document frequency, calcola quanto una parola è rara (sparsa) in un corpus, più è comune più è basso
+
+- Co-occurrence matrix: conta quante volte due parole compaiono insieme in un contesto, calcola quanto le parole siano legate una all'altra.
+
+### diversi tipi di task del text mining
+
+- Summarization
+  - estrattiva
+  - atrattiva
+- Document clustering: separe in maniera non supervisionata i documenti in cluster
+- Document classification/categorization: assegna una categoria/etichette ad un documento
+  - le etichette possono essere organizzate in tassonomie
+- Document segmentation: divide un documento in segmenti
+  - Individua gli elementi diversi di un discorso
+  - Text tiling: divide il testo in blocchi di testo
+    - permette di indivuduare come shifta un discorso sui diversi argomenti andando a vedere come cambia la frequenza delle parole nelle varie frasi
+
+### Document summarization
+
+ruduzione del testo mantenendo le informazioni più importanti
+due diversi metodi:
+
+- estrattivo: seleziona le frasi più importanti
+- astrattivo: crea un riassunto nuovo, implica NGL(natural language generation, reti neurali)
+
+valutazione Rouge: misura la qualità del riassunto comparando la similarità tra il riassunto e il testo originale usando n-grammi (bigrammi, trigrammi, ecc.)
+
+## Orienteering and Browsing
+
+Navigare attraverso un testo in maniera iterativa, cercando di trovare informazioni specifiche.
+
+### Information retrieval
+
+Ottenimento delle informazioni attraverso query
+
+## Semantica documentale
+
+Topic modeling e Dynamic topic modeling.
+Text visualization
+
+### Topic modeling
+
+Task che permette di, dati una collezioni di testi in input, trovare i topic che sono presenti in questi testi.
+Topic: lista pesata di parole
+Il problema principale riguarda problemi di calcolabilità, perchè non si sa quanti topic ci siano e quali siano.
+Solitamente i topic sono le parole che co-occorono, non tutte sono utili.
+
+- **Latent Semantic Analysis**: effettua una fattorizzazione matriciale.
+  Di fatto crea uno spazio latente a partire dal testo, questo spazio oggi esiste nei Large Language Model.
+  Crea una matrice termine-documento, e ho per ogni documento un vettore che rappresenta quale termine è presente nel documento. In grigio quelle parole positive (che sono presenti).
+
+  Si crea un contesto indiretto tramite la co-occorrenza delle parole nei documenti che ci sono in mezzo. (le prime parole del dizionario sono co-occorenti con le ultime)
+  Questo va a creare uno spazio latente, uno spazio in cui le parole hanno un significato diverso, un significato di co-occurrenza.
+  Gli stessi documenti vengono proiettati in questo spazio latente, con meno dimensioni in cui le features aggreano le features dello spazio originale. (aggregano sia il valore lessicale che il valore semantico)
+
+  Se applichiamo la **latent semantic analysis** in uno spazio a due dimensioni, allora i punti vengono proiettati su un asse che cerca di massimizzare la varianze, cioè il distanziamneto tra i punti.
+  La differenza tra la varianza espressa nel primo spazio e la varianza espressa nel secondo spazio è indice di quanto l'informazione sia stata mantenuta.
+
+  Questo è un metodo di riduzione della dimensionalità, che permette di avere una rappresentazione più compatta dei dati.
+
+### text visualization
+
+Proietta i testi in spazi visualizzabili, ad esempio in 2D o 3D.
+Utilizza tecniche come PCA, SOM, multidimensional scaling.
+
+Approcci grafici:
+
+- **parallel coordinates**: le dimensioni vengono proittare in maniera sequenziale in modo tale da poter rappresentare dimensioni molto grandi, ogni elemento è rappresentato da un segmento che collega i punti delle varie dimensioni
+- **radial visualization**: il cerchio rappresenta le features che fungono da atrattori, i punti all'interno viene identificato con un calcolo delle forze attrattive. (dipende dall'ordine delle features)
+- **heatmap**: le features sono rappresentate in una matrice e le features sono rappresentate in una scala di colori
+- **correlation circle**
+
+### Perchè usare matrici
+
+é una approssimazione, è questo non è un problema, perchè il nostro cervello è abituato a fare approssimazioni sul linguaggio.
+
+Esiste un rapporto tra spazi concettuali e prototype theory, cioè il nostro cervello raggruppa le cose in base a prototipi, cioè in base a come le cose sono simili a un prototipo.
+
+Nel momento in cui costruisco una matrice applico tecniche di nlp più o meno statistico, esisto dei parametri:
+
+- stategie di pesatura
+- transformazioni matriciali
+- meccanismi di clustering
+
+### normalizzazione
+
+Il testo puo' essere normalizzato, solitamtente sul livello lessicale/sintattico.
+Con la denormalizzazione si fa una normalizzazione a livello semantico.
+Associo ad un termine un significato, e questo termine può avere più significati.
+
+### Configurazioni matriciali
+
+- **Term-document matrix**
+  - granularità dei documenti
+  - elenco task
+- **Term-context matrix**
+  - granularità delle parole, come le parole sono distribuite nei contesti
+- **Term-pattern matrix**
+  - tuple di parole realazionate con un pattern(pattern che legano le parole delle tuple)
+  - task di relational similarity o search
+  - clustering: accorpare pattern diversi che indicano lo stesso significato
+  - relation search: es. lista tutte le x tale che x causa il cancro
+  - granularità intermedia rispetto alle prime due, granularità a livello di frasi
+
+### Similarità, ruolo
+
+A livello cognitivo, l'uomo lavora molto con la similarità, cioè raggruppa le cose in base a quanto sono simili. Fondamentale quindi nel pensiero e nell'apprendimento umano.
+
+Ne esistono diversi tipi:
+
+- semantic similarity: o sono sinonimi o sono quasi-sinonimi, stesso concetto o quasi!
+- relatedness similiarity: due concetti sono legati, ma non sono sinonimi. Ad esempio "gatto" e "topo" sono legati, ma non sono sinonimi. o antonimi, ad esempio "luce" e "buio".
+- Attributional similarity: due concetti sono simili perchè condividono delle proprietà, ad esempio "gatto" e "cane" sono simili perchè sono animali domestici.
+-
+- Relational Similarity: similarity tra coppie diverse di parole, il gatto miagola come il cane abbaia
+- Semantic association: co-occorrono frequentemente insieme, ad esempio "caffè" e "zucchero"
+
+Dataset: simlex999
+
+### problemi principali nella rappresentazione matriciale
+
+-
+
+### arricchimento matriciale
+
+tipicamente esistono due approcci al problema:
+
+- ottenere conoscenza da dati: statistcal knowledge
+- : semantic knowledge
