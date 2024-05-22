@@ -654,3 +654,52 @@ Concetti base:
   - asincrono:
     - bloccante: processo che invia si blocca finche il messaggio non è stato preso in carico dal sistema che si occupa di inviarlo, non necessariamente dal receiver. Quando ho consegnato il messaggio al Sistema operativo ad esempio posso riprendere a fare altro.
     - non bloccato: il sender invia il messaggio e continua a fare altro, il receiver riceve il messaggio quando è pronto. Il programmatore si occupa di gestire l'invio e la ricezione del messaggio.
+
+# Lezione 19 (15/05)
+
+(Slide X-Message-Passing, guardare esempi di codice)
+
+- MPI_Datatype: permette di creare un nuovo tipo di dato.
+  - MPI_Type_contiguous: crea un tipo di dato composto da più elementi dello stesso tipo
+  - MPI_Type_commit: registra il tipo di dato
+- MPI_Send(buffer, count, datatype, dest, tag, comm): bloccante, invia un messaggio
+  - buffer: buffer di dati
+  - count: numero di elementi di tipo datatype
+  - datatype: tipo di dato, pressuppone che la rappresentazione tra diverse macchine sia la stessa
+- MPI_Recv(buffer, count, datatype, source, tag, comm, status): bloccante, riceve un messaggio
+  - buffer: buffer di dati
+  - count: numero di elementi di tipo datatype
+  - datatype: tipo di dato, pressuppone che la rappresentazione tra diverse macchine sia la stessa
+  - source: mittente
+  - tag: tag del messaggio
+  - comm: comunicatore
+  - status: struct di tipo MPI_Status, contiene informazioni sul messaggio ricevuto
+    -MPI_Isend(...) e MPI_Irecv(...): non bloccanti
+  - permettono di inviare e ricevere messaggi in maniera asincrona
+  - hanno un parametro in più cioè un puntatore a una variabile di tipo MPI_Request che permette di controllare lo stato dell'operazione
+  - MPI_Wait: blocca il processo fino a che il messaggio non è stato inviato o ricevuto
+  - MPI_Test: controlla se il messaggio è stato inviato o ricevuto
+
+La MPI_Isend è conveniente in quanto la copia dalla memoria principale alla memoria della scheda di rete puo' consumare tanto tempo nel quale il processore puo' andare avanti con l'esecuzione delle istruzioni del programma.
+Se la copia è comunque a carico del processore principale allora non si avrà nessun vantaggio, si eseguiranno le operazioni in sequenza con in più l'overhead del contest switch.
+Se non la fa il processore principale dovrebbe farla il processore della scheda di rete, questo dipende dalla scheda di rete.
+Quindi in funzion della scheda di rete la Isend e la Irecv potrebbe essere peggio di usare la send e la recv bloccanti.
+
+## Send Communication Modes
+
+## Collective communication
+
+Esempio:
+tutti i processi hanno un array data da 10.
+Partendo da un root process, quello con rank 0, crea un buf grande n*proc * 10 \_ sizeof(int) e lo riempie con i dati di tutti gli array.
+MPI_Gather(data, 10, MPI_INT, buf, 10, MPI_INT, 0, MPI_COMM_WORLD);
+cioè prende i dati di tutti i processi e li mette in un unico array.
+
+- MPI_Wtime: restituisce il tempo in secondi
+- MPI_Ibarrier: bloccante, aspetta che tutti i processi abbiano raggiunto il barrier, è necessario sapere quanti siano i processi. Non funziona in un mondo dinamico dove i processi vengono creati e distrutti dinamicamente.
+
+## New MPI-2 Features
+
+One-Sided Communication: permette di scrivere e leggere direttamente nella memoria di un altro processo senza che esso debba fare nulla.
+Se la scheda di rete lo permette il processore principale, anche in questo caso, non deve fare nulla.
+Con Mpi-1 potrei implementare questo funzionalità con ad esempio un thread dedicato alla ricezione dei messaggi, ma è molto più complicato.
