@@ -577,3 +577,80 @@ Posso trasformarlo in un problema parallelo, questo significa prende il max, ovv
 - Async communication: il sender non si blocca, invia il messaggio e continua a fare altro, il receiver riceve il messaggio quando è pronto.
   - bloccante: il sender si blocca finche il messaggio non è stato preso in carico dal sistema che si occupa di inviarlo, non necessariamente dal receiver. Quando ho consegnato il messaggio al Sistema operativo ad esempio posso riprendere a fare altro.
   - non bloccante: il sender invia il messaggio e continua a fare altro, il receiver riceve il messaggio quando è pronto. Il programmatore si occupa di gestire l'invio e la ricezione del messaggio.
+
+# LEZIONE ? 19/04
+
+## Design pattern per architetture parallele
+
+- control parallel:
+  - mi faccio guidare dal flusso di esecuzione
+  - task, stream parallelism
+  - task: funzione con dei dati in input e dei dati in output, rispetto ad una fuznione normale cambia che qua vengono dichiarati anche i dati in output. Inoltre i task non possono vedere i dati globali come ad esempio possono fare le funzioni normali. Vengono chiamate funzioni senza stato. E non possono connetersi con nulla che abbia uno stato, tipo un db o un file.
+  - stream: nel caso del task sto definendo una funzione da eseguire, nel caso dello stream sto definendo degli esecutori. Ho una sequenza di input e output, una pipeline di esecutori con un flusso di dati che scorre tra di loro.
+- data parallel:
+
+  - mi faccio guidare dalla struttura dei dati
+  - ho dei dati iniziali e penso ad un tipo di parallelismo che tende a dividere i dati in parti uguali e a fare operazioni su queste parti, sottoinsieme di input indipendenti.
+  - Ogni processo lavora ad esempio su un sottoarray di un array, e poi alla fine aggrego i risultati.
+  - Il modo di fare parallelismo è di **partizionare i dati**
+  - Un errore è pensare di dividire l'input, l'input
+  - Operazioni di data parallel:
+    - map: applico una funzione a tutti gli elementi di un array
+    - reduce: aggrego i risultati
+    - stence: applico una funzione a tutti gli elementi di un array, ma ogni elemento dipende dai suoi vicini. Esempio media dei vicini.
+  - Esempi:
+    - big data
+    - Dnn/gen ai
+
+  ## OPENMP
+
+  Guardare esempi su slide
+
+# Lezione ? + 1 (24/04)
+
+## User level message passing programming
+
+Perchè user level?
+La rete è interamnte controllata dal sistema operativo.
+In geneare il sistema operativo impedisce la scrittura diretta sui dispositivi hardware, appunto perchè la funzione del sistema operativo è quella di gestire le risorse hardware.
+è una libreria che permette di scrivere librerie di comunicazione senza dover invocare per forza il sistema operativo. Puo' pero capitare di usare delle syscall per fare delle operazioni di basso livello. Però questo non è non scritto esplicitamente nel programma, magari succede all'interno della libreria.
+Due modi di scrivere un programma con queste premesse:
+
+- MPDM: Multiple Program Multiple Data
+  - diverse macchine -> diverse programmi per ogni macchina
+  - è come se avessi una architettura a microservizi
+  - non funziona bene se ho tanti processi, devo scrivere un programma per ognuno di questi processi
+- SPMD: Single Program Multiple Data
+  - Un solo sorgente, compilato una volta sola e poi eseguito su tutte le macchine in copia.
+  - Gli viene passato un identificativo al momento dell'esecuzione per capire quale copia è.
+  - In funzione di questo identificativo il programma può fare operazioni diverse.
+  - bisogna sfruttare bene l'allocazione dinamica in maniera da non avere problemi di memoria.
+
+## MPI
+
+Concetti base:
+
+- crezione di processi: indipendente dalla implementazione e dal sistema operativo
+- comunicazione: invio e ricezione di messaggi
+
+- MPI_Init:
+  - inizializza l'ambiente MPI, crea una rete di comunicazione tra i processi, permette di manetene una comunicazione stabile tra i processi.
+  - MPI assume di avere un trasporto sicuro sotto, se invio un messaggio l'assunzione è che arrivi. Questo avviene attraverso un circuito virtuale, un canale di comunicazione tra i processi.
+  - Aspetta che tutti i processi siano pronti a comunicare.
+- MPI_Finalize: termina l'ambiente MPI
+  - La terminazione è un punto critico, richiede algoritmi specifici per essere fatta, consiste in:
+    - far uscire i processi garantendo che siano arrivati tutti alla fine
+    - garantire che non ci siano messaggi in sospeso alla fine
+
+## tassonomie di comunicazione
+
+- Quanti:
+  - Simmetrica: point-to-point 1:1
+  - Asimmetrica o collettiva: 1:n, puo' avvenire tramite un comunicatore, un gruppo di processi che comunicano tra loro.
+    - In MpI vengono chiamate operazioni colletive, perchè spesso comportano fare un calcolo ad esempio la reduce.
+    - Per questo per alcuni MPI è un modello di comunicazione e per altri è un modello di calcolo.
+- Temporizzazione:
+  - sincrona: il processo che invia si blocca finche il processo che riceve non ha ricevuto il messaggio
+  - asincrono:
+    - bloccante: processo che invia si blocca finche il messaggio non è stato preso in carico dal sistema che si occupa di inviarlo, non necessariamente dal receiver. Quando ho consegnato il messaggio al Sistema operativo ad esempio posso riprendere a fare altro.
+    - non bloccato: il sender invia il messaggio e continua a fare altro, il receiver riceve il messaggio quando è pronto. Il programmatore si occupa di gestire l'invio e la ricezione del messaggio.
