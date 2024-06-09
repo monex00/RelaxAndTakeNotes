@@ -85,7 +85,3 @@ Il problema è che non sono portabili perchè dipendono dal DBMS.
 ### Replicazioni asincrone
 
 Sistemi organizzati tramite un database primario e uno o più secondari, i dati vengono replicati in modo asincrono e poi sincronizzati periodicamente.
-
-## Sistemi etereogenei
-
-Sistemi composti da diversi SO e da componenti sviluppati con diversi linguaggi di programmazione.

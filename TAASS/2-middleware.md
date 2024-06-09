@@ -35,7 +35,7 @@ In caso di sovraccarico i TP-Monitor possono allocare e duplicare i servizi di u
 
 Possono poi effettuare il bilanciamento del carico (**load balancing**) per distribuire il carico di lavoro tra le macchine fisiche equivalenti, senza che l'utente se ne accorga.
 
-Inoltre possono gestiore la **high availability** ovvero la disponibilità del servizio, garantendo che il servizio sia sempre disponibile tirando su un'altra macchina in caso di guasto.
+Inoltre possono garantire la **high availability** ovvero la disponibilità del servizio, garantendo che il servizio sia sempre disponibile tirando su un'altra macchina in caso di guasto.
 
 Il load balancing porta con se problemi di **sincronizzazione**, dovendo gestire dati su più macchine diverse.
 
@@ -113,7 +113,7 @@ Avviene attraverso la comunicazione di diverse componenti:
 è un middleware che permette la comunicazione tra applicazioni tramite messaggi, in modo asincrono.
 
 - consegna garantita (fire and forget): il mittente manda il messaggio e non si preoccupa di cosa succede dopo, il ricevente riceve il messaggio tramite listener su una coda.
-- disaccoppiamento mitteente/ricevente: il mittente non deve conoscere il ricevente e viceversa.
+- disaccoppiamento mittente/ricevente: il mittente non deve conoscere il ricevente e viceversa.
 
 ## Integrità referenziale tramite Message Oriented Middleware
 

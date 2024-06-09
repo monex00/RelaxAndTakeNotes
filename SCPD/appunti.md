@@ -703,3 +703,28 @@ cioè prende i dati di tutti i processi e li mette in un unico array.
 One-Sided Communication: permette di scrivere e leggere direttamente nella memoria di un altro processo senza che esso debba fare nulla.
 Se la scheda di rete lo permette il processore principale, anche in questo caso, non deve fare nulla.
 Con Mpi-1 potrei implementare questo funzionalità con ad esempio un thread dedicato alla ricezione dei messaggi, ma è molto più complicato.
+
+# Lezione 20 (22/05)
+
+## Lezione di Filippo (NVIDIA) sulle GPU
+
+## GPU
+
+Sfruttano tanto il parallelismo, tanti thread che fanno la stessa cosa su dati diversi.
+Hanno tanti core, sui 512 core in un singolo chip.
+
+## ARCHITETTURA
+
+Si parte sempre dalla CPU, poi il processore decide se far eseguire il codice sulla GPU.
+Tutto parte dalla CPU, per natura queste componenti eseguono in maniera asincrona:
+
+- spostare i dati dalla CPU alla GPU
+- La CPU dice alla GPU di eseguire questo codice
+- La CPU puo' controllare se il lavoro è stato fatto
+- Una volta finito vanno ricopiati i dati dalla GPU alla CPU
+
+## CUDA
+
+Estensione di C++ per scrivere programmi per GPU.
+Permette di creare griglie di thread, ognuno di questi organizzati a blocchi. Quindi una griglia di blocchi.
+La GPU è organizzata in streaming multiprocessor, ogni streaming multiprocessor ha un certo numero di core e una area di memoria condivisa per i thread. Tutti leggono la memoria della GPU, ma la shared memory è condivisa solo tra i thread di uno stesso blocco.
