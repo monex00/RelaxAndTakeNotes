@@ -18,7 +18,7 @@ alla fine di ogni iterazione:
 
 ## deploy
 
-team di integrazione fa la build e passa al team operations una release e delle istruzioni e dovreanno gestire i 3 ambienti di sviluppo, test , accepance e produzione e si decide poi cosa dare al cliente
+- [ ] team di integrazione fa la build e passa al team operations una release e delle istruzioni e dovreanno gestire i 3 ambienti di sviluppo, test , accepance e produzione e si decide poi cosa dare al cliente
 
 ![alt text](image.png)
 source control: git
@@ -83,7 +83,7 @@ cambio da blu a verde dal router gli utenti la usano e se non va a buon fine fac
 sono più incerto non sposto tutti gli utenti ma solo una parte e vedo se va bene
 ho un confronto tra la nuova e la vecchia versione
 
-- **feature flags**
+- [ ] **feature flags**
 
 ![alt text](image-4.png)
 ho dei flag nel codice che mi permette di dare le features nuove solamente a una parte degli utenti(o stampare cose)
