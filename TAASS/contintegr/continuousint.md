@@ -1,23 +1,14 @@
 # Countinuous integration and delivery
 
-## Automazione
-
-- non sarebbe potuto esistere con unarchitettura monolitica: impossibilie fare test e deploy di tutto quanto insieme
-- anche il controllo di versione funziona bene con i microservizi
-- in più posso sostituire velocemente le immagini dentreo i pod per non mandare down per cambiare
-- con le action (github) posso fare il testing e il deploy in automatico allo scattare di certi eventi
-- avere diversi server su cui girano diverse versionni, produzione, test, sviluppo e posso mandare i test su quello che volgio
-- posso construire dei nuovi target per le nuove architetture che devo integrare(nuovo telefono)
-
-## Dove e perchè metto questo tool?
-
-dobbiamo mettere daccordo i vari team di persone che lavorano:
+Un team è solitamente composto da:
 
 - sviluppatori
-- product management: cosa deve fare il prodotto e come deve essere fatto, si occupa di fare il ponte tra sviluppatori e clienti
-- integration e operations: consegnano, testano e integrano il prodotto
+- product management: gruppo di persone che definisce il prodotto, decide cosa andrà nelle varie realease. Si occupa di fare il ponte tra sviluppatori e clienti
+- integration e operations team: consegnano, testano e integrano il prodotto
+  - integration: Merge - Build - Test
+  - operation: Responsabile di far uscire la release
 
-l'idea e di ridurre al minimo la parte di integrazione e operations(iterazioni corte), per fare questo dobbiamo automatizzare il più possibile
+l'idea e di ridurre al minimo la parte di integrazione e operations (iterazioni corte), per fare questo dobbiamo automatizzare il più possibile.
 
 alla fine di ogni iterazione:
 
@@ -37,26 +28,37 @@ source control: git
 - la build è manuale: integrazione
 - il deploy è manuale: operations
 
-miglioramenti:
+A cosa puntiamo?:
 
 - migliore qualità
 - delivery veloce
 - riduzione dei costi
 - più flessibilità
 
-## continuous delivery
+Creazione di pipeline di build e di deploy
+
+## continuous delivery !Importante
 
 ![alt text](image-1.png)
 
 se il codice è molto può esserci la quality assurance che fa il testing da persone esterne
 
-## IMPORTANTE
+## Continuous integration principles and benefits
 
-- per poterci essere questa continuazione bisogna avere un unico ambiente(git)
+**Principles**:
+
+- un unico ambiente (git)
 - bisogna avere le commit piccole e frequenti
-- ogni commit triggera una build: troppe?
 - automazione dei test
-- tutti hanno accesso allaultima versione
+
+**Benefits**:
+
+- less effort: meno tempo per fare il deploy
+- I problemi vengono scoperti prima
+- Automazione significa meno errori
+- Il processo è più visibile
+- Migliora la collaborazione
+- Migliora la qualità del software
 
 ## differenza tra continuous deployment e continuous delivery
 
@@ -66,23 +68,29 @@ deployment: il software è rilasciato in produzione in automatico tutte le volte
 
 con piccole immagini di kubernetes è uguale
 
-## Blue green deployment
+## Strategie di deployment
+
+- **Blue green deployment**
 
 ![alt text](image-2.png)
 router: posso indirizzare dove voglio con apigateway
 devo far testare nuova versione?
 cambio da blu a verde dal router gli utenti la usano e se non va a buon fine faccio rollback, velocissimo cambio solamente i lkservizio
 
-## canary deployment
+- **canary deployment**
 
 ![alt text](image-3.png)
 sono più incerto non sposto tutti gli utenti ma solo una parte e vedo se va bene
 ho un confronto tra la nuova e la vecchia versione
 
-## feature flags
+- **feature flags**
 
 ![alt text](image-4.png)
 ho dei flag nel codice che mi permette di dare le features nuove solamente a una parte degli utenti(o stampare cose)
+
+## DevOps
+
+**Development** (sviluppo) e **Operations** (organizzazione). Lo scopo di questa cultura aziendale è quello di far sì che i team di sviluppo lavorino assieme ai team organizzativi durante tutta la fase di sviluppo di un software e oltre. Ciò permette di evitare problemi di integrazione del software fin dall'inizio e facilita il controllo e la distribuzione dei programmi finiti.
 
 ## git ops
 

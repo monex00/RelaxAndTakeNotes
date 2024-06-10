@@ -15,7 +15,7 @@ _Docker è una piattaforma software che raccoglie il software in unità standard
 
 ## Come funziona?
 
-Docker funziona grazie l'uso di container che contengono l’insieme dei dati di cui necessita un’applicazione per essere eseguita:
+Docker funziona grazie l'uso di container che contengono l'insieme dei dati di cui necessita un' applicazione per essere eseguita:
 
 - librerie
 - altri eseguibili
@@ -23,13 +23,13 @@ Docker funziona grazie l'uso di container che contengono l’insieme dei dati di
 - file di configurazione
 - script
 
-La creazione di un container parte dalla definizione di un'immagine trami un file di configurazione chiamato Dockerfile.
+La creazione di un container parte dalla definizione di un'immagine tramite un file di configurazione chiamato Dockerfile.
 Il container è un'istanza in esecuzione di un'immagine.
 
 Grazie a questa definizione standardizzata, i container possono essere eseguiti su qualsiasi sistema che supporti Docker, indipendentemente dal sistema operativo.
 
 Inoltre, i container sono leggeri perchè sfruttano i servizi offerti dal kernel
-del sistema operativo ospitante, invece di richiedere l’esecuzione di un kernel
+del sistema operativo ospitante, invece di richiedere l'esecuzione di un kernel
 virtualizzato come avviene nel caso delle VM.
 
 ## Altri concetti

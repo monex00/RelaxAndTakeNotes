@@ -5,10 +5,11 @@ Kafka è un sistema di messaggistica distribuito che implementa il publish/subsc
 In linea generale è tutto ciò che è rabbitMq ma è pensato per essere scalabile e con permanenza dei messaggi.
 
 Caratteristiche Principali
-High-throughput: Efficiente nel gestire volumi elevati di messaggi, mantenendo alte prestazioni.
-Fault-tolerant: Resistente a guasti hardware e software grazie alla sua architettura distribuita.
-Loosely Coupled: Indipendenza tra produttori e consumatori di messaggi.
-Reliable and Durable: Assicura l'affidabilità nella consegna dei messaggi e la loro persistenza a lungo termine.
+
+- High-throughput: Efficiente nel gestire volumi elevati di messaggi, mantenendo alte prestazioni.
+- Fault-tolerant: Resistente a guasti hardware e software grazie alla sua architettura distribuita.
+- Loosely Coupled: Indipendenza tra produttori e consumatori di messaggi.
+  Reliable and Durable: Assicura l'affidabilità nella consegna dei messaggi e la loro persistenza a lungo termine.
 
 ## Difetti dei principali sistemi di messaggistica
 

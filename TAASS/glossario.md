@@ -32,3 +32,11 @@ _Docker è una piattaforma software che raccoglie il software in unità standard
 _Kubernetes fornisce un framework per far funzionare i sistemi distribuiti in modo resiliente, si occupa della scalabilità, failover, distribuzione delle applicazioni._
 
 _Quindi Kubernetes è di fatto un Orchestratore di container (Docker)._
+
+# Microservizi
+
+_Raffinamento di SOA (Service Oriented Architecture), i microservizi sono un'architettura software che organizza un'applicazione come un insieme di servizi indipendenti, ciascuno dei quali è responsabile di un'area di funzionalità._
+
+## Cos'è un microservizio
+
+Un microservizio è un servizio software che è progettato per essere piccolo e modulare. Ogni microservizio è progettato per eseguire una singola funzione o un insieme di funzioni correlate.
