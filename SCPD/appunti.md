@@ -1,3 +1,8 @@
+| col1 | col2 | col3 |
+| ---- | ---- | ---- |
+|      |      |      |
+|      |      |      |
+
 # Introduzione al Calcolo Parallelo e Distribuito (23/02)
 
 ## Differenza tra Calcolo Parallelo e Distribuito
@@ -40,7 +45,7 @@ La gestione efficace della cache sfrutta il principio di località del codice, e
 - **Località Spaziale** : l'accesso a un dato aumenta la probabilità di accedere a dati adiacenti. Questo principio è sfruttato efficacemente da strutture dati come gli array, soprattutto quando si accede sequenzialmente agli elementi.
 - **Località Temporale** : se un dato viene accesso una volta, è probabile che venga riaccesso in breve tempo. Cicli come i `for` possono capitalizzare su questo principio se organizzati correttamente.
 
-La RAM consente accessi in qualsiasi ordine, ma non tutti gli accessi hanno lo stesso costo. Cicli sequenziali, come quelli creati con l'istruzione `for`, suggeriscono al compilatore un accesso sequenziale ai dati, permettendo tecniche di prefetching, ovvero il caricamento anticipato dei dati in cache basato sulla predizione degli accessi futuri.
+La RAM consente accessi in qualsiasi ordine (da qua il significato di `RANDOM ACCESS MEMORY`)\, ma non tutti gli accessi hanno lo stesso costo. Cicli sequenziali, come quelli creati con l'istruzione `for`, suggeriscono al compilatore un accesso sequenziale ai dati, permettendo tecniche di prefetching, ovvero il caricamento anticipato dei dati in cache basato sulla predizione degli accessi futuri.
 
 Le interruzioni anticipate dei cicli (`break`) possono complicare il prefetching, poiché il compilatore non può prevedere con certezza l'uscita anticipata dal ciclo.
 
@@ -53,9 +58,11 @@ Nel contesto del parallelismo, la scelta di quale ciclo parallelizzare è critic
 - **Ciclo Esterno** : esecuzione parallela di task più grandi, con tempi più lunghi ma minor frequenza.
 - **Ciclo Interno** : esecuzione parallela di numerosi task più piccoli, con minor tempo di esecuzione ma alta frequenza.
 
-Parallelizzare un algoritmo sequenziale su n core non garantisce un
-miglioramento proporzionale delle prestazioni (speedup di n), ma si
-ottiene sempre un risultato minore o uguale a n a causa dell'overhead della gestione del parallelismo.
+Parallelizzare un algoritmo sequenziale su n core non garantisce un miglioramento proporzionale delle prestazioni (speedup di n), ma si ottiene sempre un risultato minore o uguale a n a causa dell'overhead della gestione del parallelismo.
+
+## Ottimizzazione del compilatore
+
+Il compilatore può ottimizzare il codice in vari modi, in realtà si basta su ottimizzazioni di codici sequenziali, ma non sempre queste ottimizzazioni sono efficaci per il codice parallelo. Potrebbero infatti modificarne la semantica, causando problemi di sincronizzazione e accesso concorrente ai dati.
 
 ## Gerarchia della Cache nei Sistemi Multicore
 
@@ -89,6 +96,12 @@ Divisione tra:
   - Un singolo flusso di istruzioni viene eseguito su più flussi di dati, vettorizzazione
   - esempio: for(i = 0; i < n; i++) a[i] = b[i] + c[i];
     - eseguo la stessa operazione su tutti gli elementi di b e c
+    - | b   | 1   | 1   | 1   |
+      | --- | --- | --- | --- |
+      |     | +   | +   | +   |
+      | c   | 1   | 1   | 1   |
+      |     | =   | =   | =   |
+      | a   | 2   | 2   | 2   |
 - **MISD** : Multiple Instruction Single Data
   - Più flussi di istruzioni operano su un singolo flusso di dati, rarità nell'implementazione pratica.
   - Usare algortimi diversi sullo stesso dato per motivi di **robustezza**, calcolo lo stesso dato in modi diversi e confronto i risultati.
@@ -106,7 +119,9 @@ Se la memoria è una shared memory, le api sono 3:
 
 - lettura: signature `read(addr: int) -> int`
 - scrittura: signature `write(addr: int, value: int) -> void`
-- lock: signature `lock(addr: int) -> void` (verificare?)
+- lock: signature `lock(addr: int) -> void` (verificare?) (leggi e scrivi in maniera atomica)
+
+Per quanto riguarda la CPU: è il suo linguaggio macchina
 
 # Lezione 5 (6/03) - 4 Classification
 
@@ -119,20 +134,20 @@ Per i thread invece posso anche pensarci dopo, in quanto condividono lo stesso s
 
 Permettono di leggere e scrivere da due o più processi.
 Generalmente un processo non può leggere o scrivere la memoria di un altro processo.
-Avviene tramite scambio di messaggi, viene inviato il messaggio e poi esso viene scritto in memoria.
 
 ## Distributed memory
 
 Ogni processore ha la propria memoria e attraverso una interconnection network possono comunicare tra loro.
+Avviene tramite scambio di messaggi, viene inviato il messaggio e poi esso viene scritto in memoria.
 
 ## memory consistency & cache coherence
 
 Il problema della consistenza della memoria è che se due processi leggono la stessa locazione di memoria, non è garantito che leggano lo stesso valore.
-L'accesso alla memoria non è una operazione atomica:
+L'accesso alla memoria **non è una operazione atomica**:
 
 - il processore fa una richiesta di lettura
 - la memoria riceve dopo un po' la richiesta
-- ricerca il dato, prima trova la riga e poi il dato
+- ricerca il dato, la memoria è una matrice, tramite l'indirizzo viene individuata prima la riga, essa viene salvata su un buffer e da esso viene estrapolato il dato ricercato.
 - risponde al processore
 - dopo un po' il processore riceve la risposta
 
@@ -140,23 +155,36 @@ Il tutto avviene tramite un dialogo sul bus.
 Se ho più processori le operazioni si sovrappongono e quindi non è garantito che i processori leggano lo stesso valore.
 Ma soprattutto non è garantito che se un processo fa una richiesta di lettura prima allora riceva il dato prima rispetto a un altro processo.
 
-Il problema della consistenza della memoria è capire se esiste se deve esistere un ordine tra le richieste alla memoria, capire quindi come avvengono le operazioni di lettura e scrittura viste dalla parte della memoria.
+Il problema della consistenza della memoria è capire se esiste e se deve esistere un ordine tra le richieste alla memoria, capire quindi come avvengono le operazioni di lettura e scrittura viste dalla parte della memoria.
 è possibile che l'effetto della memoria sia diverso rispetto a quello scritto nel programma a causa appunto di questi ritardi.
 
 ## Modello di consistenza sequenziale
 
+Impone un ordine totale con cui avvengono le cose in memoria.
 Se un processore scrive un dato e poi legge il dato, il dato letto deve essere uguale al dato scritto.
-Nessuna delle macchine di oggi usa questo modello, in quanto è molto restrittivo; con due memorie non sono più in grado di garantire un ordine totale, ma solo uno parziale.
+Ad esempio:
+
+- A = 1
+- B = 2
+
+Quando faccio B=2 allora sono sicuro che A=1, in quanto ho un ordine totale.
+Nessuna delle macchine di oggi usa questo modello, in quanto è molto restrittivo; con due memorie non sono più in grado di garantire un ordine totale, ma solo uno parziale per ognuna delle memorie.
+
+Esempi di modelli di consistenza:
+
+- Weak order
+- Total store order
 
 ## Cache coherence
 
 Con la cache, il problema della consistenza della memoria diventa più complesso.
 In una cache di un processore A = 1, in un'altra cache di un processore A = 2.
 Fare in modo che il programmatore non abbia mai la percezione che esistano valori diversi della stessa variabile in cache diverse.
-Riguarda copie multiple dello stesso indirizzo, vorrei che tutte le copie siano aggiornate allo stesso valore.
-La cache coherence puo' essere risolto a livello hardware, le due cache comunicano attraverso un protocollo al fine di decidere quale valore è il corretto.
+Riguarda copie multiple dello stesso indirizzo, vorrei che tutte le copie siano aggiornate allo stesso valore, senza dover necessariamente andare a vedere in memoria, altrimenti renderebbe le cache inutili.
+La cache coherence puo' essere risolto a livello hardware, i due processori comunicano attraverso un protocollo al fine di decidere quale valore è il corretto, il protocollo di cache coherence deve andare alla velocità delle cache, non alla velocità della memoria, sempre per non rendere unitili le cache.
+
 Più sono le cache più questo dialogo diventa complicato e costoso (una macchina con tanti core porta il core ad andare più lentamente).
-Ogni processore scalabile ha un numero limite di socket supportati, in quanto altrimenti la cache coherence diventerebbe troppo costosa.
+Ogni processore scalabile(per scalabile si intende che supporta la combinazione in più socket) ha un numero limite di socket supportati, in quanto altrimenti la cache coherence diventerebbe troppo costosa.
 
 ## shared memory fondamenti
 
@@ -168,15 +196,20 @@ Ogni processore scalabile ha un numero limite di socket supportati, in quanto al
   Un messaggio è una forma di sincronizzazione un po' lasca perchè non so quanto prima il messaggio è stato scritto.
   Se invio un messaggio di sincronizzazione e io parto subito dopo, il processo che riceve il messaggio parte dopo di me, ma non so quanto dopo di me.
 
+|                  | Architettura a SHM                                                                                                                                                                                                                                                                                                                                                                                              | Architettura Distribuita                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Scambio Dati     | Tramite scrittura e lettura in indirizzo<br /> di memoria condivisa                                                                                                                                                                                                                                                                                                                                             | Tramite scambio di messaggi                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Sincronizzazione | Come faccio a sapere se un processo ha scritto un dato per un altro processo?<br />e come faccio a sapere in che punto della memoria è stato scritto?<br /><br />Servirebbe un semaforo ma al livello di memoria non esiste.<br />Potrebbe essere implementanto usando le api di read e write delle memorie.<br />Si può utilizzare l'operazione di scambio atomico per realizzare semafori di sincronizzazione | Sempre tramite scambio di messaggi:<br /><br /> Un msg porta informazioni sia dei dati che temporali, in quanto se un processo<br />manda un msg ad un altro processo, il secondo processo deve essere pronto a ricevere il msg.<br /><br />Un messaggio è una forma di sincronizzazione un po' lasca perchè non so quanto prima il messaggio è stato scritto.<br />Se invio un messaggio di sincronizzazione e io parto subito dopo, <br />il processo che riceve il messaggio parte dopo di me, ma non so quanto dopo di me. |
+
 ### Thread
 
-Un processo è un programma in esecuzione, composto da un Process Control Block (PCB) che contiene informazioni come lo stato del processo, la memoria allocata, lo stack, ecc.
+Un processo è un programma in esecuzione, composto da un Process Control Block (PCB) che contiene informazioni come lo stato del processo, la memoria allocata, lo stack, i file aperti, ecc.
 
 Ongi processo ha uno spazio logico di indirizzamento, quindi ogni processo ha la sua memoria. Due processi possono riferirsi alla stesso indirizzo logico ma non stanno parlando della stessa locazione di memoria.
 
 Un thread è un processo leggero, condividono lo stesso spazio di memoria, quindi se un thread scrive un dato, un altro thread può leggerlo. L'indirizzo logico si riferisce alla stessa locazione di memoria.
 Hanno un loro Process control block chiamato TCB (Thread Control Block).
-Ogni thread ha un suo stack, ma condividono lo stesso heap.
+Ogni thread ha un suo stack, ma condividono lo stesso heap e lo stesso blocco logico e i puntatori ai file aperti.
 
 I processi sono generalmente indipendenti, mentre i thread sono oggetti cooperanti.
 
@@ -198,13 +231,13 @@ I linguaggi di programmazione non hanno un costrutto per la comunicazione tra pr
 
 Si è cercato di astrarre il problema creando una libreria chiamata MPI (Message Passing Interface) che permette di scrivere programmi paralleli in maniera trasparente rispetto all'architettura sottostante.
 
-Si distinguono per la tipologia della rete e per la loro diffusione geografica (stessa stanza, stesso edificio, stesso paese, stesso continente, mondo). in funzione di questi aspetti possono essere chiamati in diversi modi: Cluster, Cloud, ecc...
+Si distinguono per **la tipologia della rete** e per la loro **diffusione geografica** (stessa stanza, stesso edificio, stesso paese, stesso continente, mondo). in funzione di questi aspetti possono essere chiamati in diversi modi: Cluster, Cloud, ecc...
 
 # Lezione 6 (8/03) -
 
-## thread cooperativi
+## thread cooperativi o fiber
 
-Sono thread che volontariamnte lascia il controllo ad un altro thread, quindi non è il sistema operativo a decidere quando un thread deve essere eseguito.
+Sono thread che volontariamnte lascia il controllo ad un altro thread, quindi non è il sistema operativo a decidere quando un thread deve essere eseguito. Il passaggio di controllo avviene come se venisse chiamata un'altra funzione. (Molto veloci per questo)
 
 ## stencil computation in shared memory
 
@@ -213,9 +246,9 @@ Riguarda spesso array divisi a pezzi e distrubuiti tra i processi.
 
 ## halo swapping
 
-Se ho una matrice divisa in pezzi, ogni pezzo ha un bordo (alone), e questo bordo è la copia del bordo di un altro pezzo. (deciso staticamente dal programmatore, devi pensarci prima) (migliore in termini di prestazione).
+Se ho una matrice divisa in pezzi, ogni pezzo ha un bordo (alone), e questo bordo è la copia del bordo di un altro pezzo. (deciso staticamente dal programmatore, devi pensarci prima alla creazione dei processi) (migliore in termini di prestazione).
 
-Se ho una shared memory è molto più semplice, in quanto posso accedere direttamente alla cella di memoria, perchè è divisa solo logicamente. (Peggiore in termini di prestazione, posso avere dei punti di congestione sulla memoria). (puo' essere decisono in maniera dinamica).
+Se ho una shared memory è molto più semplice, in quanto posso accedere direttamente alla cella di memoria, perchè è divisa solo logicamente. (Peggiore in termini di prestazione, posso avere dei punti di congestione sulla memoria). (posso fare decisione dinamiche a runtime, non come prima).
 
 ## Ricapitolando
 
@@ -224,7 +257,7 @@ Se ho una shared memory è molto più semplice, in quanto posso accedere diretta
 - Introduzione alle hardware platform
 - Programming model
   - SHM (lock/unlock, read/write)
-    - lock free programming (approfondimento)
+    - [lock free programming](https://www.boost.org/doc/libs/1_60_0/doc/html/lockfree.html) (approfondimento se c'è tempo)
   - Message passing (sincronizzazione tramite messaggi)
   - GPU
   - Come creare thread
@@ -242,14 +275,29 @@ La chache L3 è sia condivisa tra core che distribuita tra nodi (diversi socket)
 
 ## hyper threading
 
-- memoria
-- fetch
-- decode
-- execute
-- write
+I processori moderni utilizzano un'architettura chiamata pipeline, che suddivide l'esecuzione delle istruzioni in diverse fasi, tipicamente:
 
-un processore con un core e due thread è come se avessi due core, tuttavia nella pipeline di prima ho un solo execute, quindi non ho un vero parallelismo.
-Non tutte le istruzioni arrivano in profondità nella pipeline, per migliorare replico (più thread) la pipeline sono all'inizio, le istruzioni che arrivano in profondità non vengono eseguiti in parallelo da un certo punto in poi.
+- Fetch (prelievo dell'istruzione dalla memoria),
+- Decode (decodifica dell'istruzione),
+- Execute (esecuzione dell'istruzione),
+- Write (scrittura del risultato).
+
+Hyper-Threading è una tecnologia che consente a un singolo core di gestire due thread contemporaneamente. L'idea è che, mentre uno dei thread è bloccato in una fase della pipeline (ad esempio, attende dati dalla memoria), l'altro thread può utilizzare le risorse disponibili del core per continuare a progredire. Questo sfrutta meglio le risorse del processore.
+
+Un processore con un singolo core ma due thread attivi tramite hyper-threading non è equivalente a un processore con due core fisici. In particolare, c'è ancora una sola fase di esecuzione (execute) nella pipeline, quindi non può esserci vero parallelismo completo. Ciò significa che, anche se il processore può avanzare in alcune fasi con due thread contemporaneamente, una volta che le istruzioni raggiungono la fase di esecuzione, il processore deve gestirle in modo sequenziale o alternato, non parallelamente.
+
+In sintesi, l'hyper-threading replica la capacità di gestire più thread solo nelle fasi iniziali della pipeline (fetch e decode), ma quando le istruzioni richiedono l'esecuzione vera e propria, le risorse fisiche limitate del core impediscono un'esecuzione parallela completa.
+
+Bisogna sempre controllare se si hanno un certo numero di core o se si ha hyperthreading (anche chiamato contesto), in quanto con hyperThreading non raggiungerò mai lo speedup sperato.
+
+4 tipi di istruzioni e profondità della pipeline:
+
+- calcolo (operative)
+- jump condizionale (si fermano al decode)
+- jump incondizionale (si fermano al decode)
+- chiamata al sistema (load e store) (le load si fermano al fetch, le store al write)
+
+Per i programmi di calcolo intensivo l'hyper threading non è molto utile, in quanto non si ha un vero parallelismo, ma per programmi che fanno molte operazioni di I/O o condizioni è molto utile.
 
 # Lezione 7 (13/03)
 
@@ -262,18 +310,21 @@ La cache non va veloce come i registri della cpu che eseguono le operazioni nell
 
 Working set: insieme degli indirizzi acceduti da un programma, da un algoritmo o da una parte di algoritmi.
 
-La cache funziona bene se agli stessi dati ci accedo più volte. La soluzione è il tiling in cui si divide la matrice in sottomatrici più piccole, in modo che le sottomatrici siano piccole e quindi ci sia una maggiore probabilità che stiano in cache.
+La cache funziona bene se agli stessi dati ci accedo più volte. La soluzione è il tiling in cui si divide la matrice in sottomatrici più piccole, in modo che le sottomatrici siano piccole e quindi che ci stiano in cache.
+Nell'esempio di moltiplicazione di matrici, è bene che i due operandi stiano in cache, appunto perchè ci accedo più volte, mentre la matrice risultato può essere scritta direttamente in memoria in quanto l'operazione di write è una sola.
 
 Principio di località: se accedo a un dato, è probabile che acceda a dati vicini.
 Permette la costruzione di gerarchie di memoria. (più livelli di caching)
 Più si arriva vicino al processore più si ha una memoria più veloce ma generalmente più piccola (piccola per via della tecnologia, potrebbe anche essere della stessa dimensione ma più veloce).
 
-Quando ho un miss non richiedo un singolo dato al livello successivo ma una intera linea di cache, la dimensione della linea dipende da quanto probabilità di avere località spaziale ho e da quanto costa spostare i dati e ovviamente dalla dimensione della cache stessa.
+Le cache si osservano a coppie di livelli, i e i+1, e si definisce la dimensione delle linee ad esempio, qundo chiedo un dato al liv successivo non chiedo un singolo dato ma una linea di dati.
+
+Quando ho un miss non richiedo un singolo dato al livello successivo ma una intera linea di cache, la dimensione della linea dipende da quanto probabilità di avere località spaziale(ricevo comunque una linea anche se poi magari non la uso, e questo ha un costo) e da quanto costa spostare i dati e ovviamente dalla dimensione della cache stessa.
 l1 avrà linee più piccole di l2 e l2 avrà linee più piccole di l3.
 
 Lo scambio costra quanto una funzione lineare affine, si ha un costo costante e poi cresce linearmente sulla base della dimensione del dato.
 
-L'indirizzamento del sistema non è a byte, ma a word. quando è grande una word? dipende dal processore, ma generalmente è di 64 bit. una linea generalmente è di 64 byte ovvero 8 word.
+L'indirizzamento del sistema non è a byte, ma a word. quando è grande una word? dipende dal processore, ma generalmente è di 64 bit ovvero 8 byte. una linea generalmente è di 64 byte ovvero 8 word.
 
 ## Cache measurement
 
@@ -289,7 +340,7 @@ Solitamente sono probabilità hit = 1 - probabilità miss.
 - Clock cycle = IC \* CPI
 - IC = numero di istruzioni (a livello assembly)
   - IC = IC_cpu + IC_mem
-- CPI = numero di cicli di clock per istruzione
+- CPI = numero medio di cicli di clock per istruzione
   - CPI è la media dei cicli di clock per istruzione
   - CPI = clock cycle / IC
   - se CPI è 16 allora vengono eseguite 16 istruzioni in un ciclo di clock
@@ -322,17 +373,27 @@ Sono un modo di definere il set di istruzioni di un processore.
 Quando leggo una istruzione non so precisamente quante parole di memoria servono, se ho una istruzione a 64 bit che usa 3 indirizzi a 64 bit, allora mi servono 3 parole di memoria rendendo tutto più complesso.
 Es. add a, b, c
 
-L'idea è che ogni istruzione deve stare in una parola, facendo dei sacrifici: non ci metto gli indirizzi se non uno.
-Ho due istruzioni specializzate per le operazioni sugli indirizzi, load e store.
+Nelle RISC: l'idea è che ogni istruzione deve stare in una parola, facendo dei sacrifici: non ci metto gli indirizzi se non uno.
+
+Ho due istruzioni specializzate per le **operazioni sugli indirizzi**, load e store.
 load a
 load b
-(a e b sui registri, indizzi a 8 bit, più piccoli)
+
+Le **altre istruzioni lavorano** sui registri:
+(a e b sui registri, indizzi a 8 bit, più piccoli perchè non sono tanti quanto in memoria)
 add r1, r2, r3
+
 store r3, c
 
 in questo modo si ho istruzioni più piccole però ne avrò bisogno di più per fare la stessa cosa.
 
-Con RISC il compilatore sa esattamente quanto costa ogni istruzione, quindi è più facile fare ottimizzazioni.
+Con RISC il compilatore sa esattamente (è più prevedibile) quanto costa in tempo ogni istruzione, quindi è più facile fare ottimizzazioni.
+Attualmente ha vinto Risc ma si usano soluzioni ibride. Il cisc viene tradotto a livello hardware in risc in maniera dinamica. Per ottimizzare esistono nei processorei decoder parallelizzati(alcuni per operazioni complesse altre per quelle semplici).
+ARM invece non ha di questo problemi in quanto è un risc, con tutti i problemi di compatibilità che ne derivano.
+
+Le gpu sono Risc.
+
+The key operational concept of the RISC computer is that each instruction performs only one function (e.g. copy a value from memory to a register). The RISC computer usually has many (16 or 32) high-speed, general-purpose registers with a [load–store architecture](https://en.wikipedia.org/wiki/Load%E2%80%93store_architecture "Load–store architecture") in which the code for the register-register instructions (for performing arithmetic and tests) are separate from the instructions that access the main memory of the computer. The design of the CPU allows RISC computers few simple [addressing modes](https://en.wikipedia.org/wiki/Addressing_mode "Addressing mode")^[[2]](https://en.wikipedia.org/wiki/Reduced_instruction_set_computer#cite_note-Flynn54-2)^ and predictable instruction times that simplify design of the system as a whole.
 
 ## Organizzazione della cache
 
@@ -340,9 +401,13 @@ Con RISC il compilatore sa esattamente quanto costa ogni istruzione, quindi è p
   - ogni blocco di memoria può essere messo in una sola posizione della cache
   - se ho un blocco di memoria che va in una posizione della cache, e poi ne arriva un altro che va nella stessa posizione, il primo viene buttato via.
   - è molto veloce, ma ha un alto numero di miss
+  - viene usato per le istruzioni, perchè sono più critiche, perche la cache andrebbe letta ad ogni istruzione, inoltre c'è la possibilità di rileggere le stesse istruzioni(loop) devo fare solo attenzione che non ci siano conflitti.
 - n-way set associative (usata per i dati, istruzioni load e store)
   - ogni blocco di memoria può essere messo in n posizioni della cache
   - è più lento, ma ha un numero di miss minore
+  - è più lento in quanto in caso di conflitto devo accedere a più tabelle
+  - le load e store sono in generele meno frequenti rispetto alle altre, perciò mi convienve usare una cache un po più lenta ma più efficiente.
+  - più salgo di livello più la cache è grande e più è n-way set associative (n grande)
 
 ## Cache write policy
 
@@ -351,10 +416,12 @@ La scrittura è più complessa, esistono due tipi di policy:
 - Write through:
   - scrivo sia in cache che a tutti i livelli precedenti fino alla memoria.
   - è più lenta, ma più sicura
+  - avviene in più step,prima scrivo nel primo livello, e poi prima o poi queste modifiche vengono propagate
 - Write back:
   - scrivo in cache e marko quella linea come scritta.
   - la scrittura verrà propagata alla memoria solo quando la linea verrà buttata via o quando un altro core fa richiesta di lettura.
   - quei dati che non servono a nessuno non vengono mai scritti in memoria se non alla fine del programma.
+  - L'aspetto negativo è che la propagazione avverà solamente quando un core ne fa richiesta, quindi dovrà aspettare.
   - se qualcuno deve leggere deve attendere che la scrittura sia finita.
   - è più veloce, ma meno sicura
 
@@ -575,6 +642,7 @@ Posso trasformarlo in un problema parallelo, questo significa prende il max, ovv
   - non ricevo finche il sender non è pronto
 
 - Async communication: il sender non si blocca, invia il messaggio e continua a fare altro, il receiver riceve il messaggio quando è pronto.
+
   - bloccante: il sender si blocca finche il messaggio non è stato preso in carico dal sistema che si occupa di inviarlo, non necessariamente dal receiver. Quando ho consegnato il messaggio al Sistema operativo ad esempio posso riprendere a fare altro.
   - non bloccante: il sender invia il messaggio e continua a fare altro, il receiver riceve il messaggio quando è pronto. Il programmatore si occupa di gestire l'invio e la ricezione del messaggio.
 
@@ -583,10 +651,12 @@ Posso trasformarlo in un problema parallelo, questo significa prende il max, ovv
 ## Design pattern per architetture parallele
 
 - control parallel:
+
   - mi faccio guidare dal flusso di esecuzione
   - task, stream parallelism
   - task: funzione con dei dati in input e dei dati in output, rispetto ad una fuznione normale cambia che qua vengono dichiarati anche i dati in output. Inoltre i task non possono vedere i dati globali come ad esempio possono fare le funzioni normali. Vengono chiamate funzioni senza stato. E non possono connetersi con nulla che abbia uno stato, tipo un db o un file.
   - stream: nel caso del task sto definendo una funzione da eseguire, nel caso dello stream sto definendo degli esecutori. Ho una sequenza di input e output, una pipeline di esecutori con un flusso di dati che scorre tra di loro.
+
 - data parallel:
 
   - mi faccio guidare dalla struttura dei dati
@@ -632,12 +702,14 @@ Concetti base:
 
 - crezione di processi: indipendente dalla implementazione e dal sistema operativo
 - comunicazione: invio e ricezione di messaggi
-
 - MPI_Init:
+
   - inizializza l'ambiente MPI, crea una rete di comunicazione tra i processi, permette di manetene una comunicazione stabile tra i processi.
   - MPI assume di avere un trasporto sicuro sotto, se invio un messaggio l'assunzione è che arrivi. Questo avviene attraverso un circuito virtuale, un canale di comunicazione tra i processi.
   - Aspetta che tutti i processi siano pronti a comunicare.
+
 - MPI_Finalize: termina l'ambiente MPI
+
   - La terminazione è un punto critico, richiede algoritmi specifici per essere fatta, consiste in:
     - far uscire i processi garantendo che siano arrivati tutti alla fine
     - garantire che non ci siano messaggi in sospeso alla fine
