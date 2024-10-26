@@ -722,12 +722,13 @@ T_lat invece di una costante dovrebbe essere una funzione, in quanto se la rete 
   - nei linear array è 2, una matrice bidimensionale è 4, tridimensionale è 6, k-dimensionale è 2k
 - Diameter: lunghezza del percorso più lungo tra due nodi
   - nei linear array è n-1, nel bidimensionale è la radice quadrata di n
-- Bisection bandwidth: numero minimo di link che devono essere rimossi per dividere la rete in due parti uguali. Importante perchè modella il collo di bottiglia della rete, se tutti devono scambiarsi i messaggi devono passare per questo punto. più è grande più è veloce la rete (meno aumento di latenza).
+- Bisection bandwidth: numero minimo di link che devono essere rimossi per dividere la rete in due parti uguali. Importante perchè modella il collo di bottiglia della rete, se tutti devono scambiarsi i messaggi devono passare per questo punto. più è grande più è veloce la rete (soffre meno dell'aumento di latenza).
   - nei linear array è 1, nel bidimensionale è radice di n
 
 ## 2D Torus
 
 Migliora il diametro e il bisection bandwidth. è una rete bidimensionale con collegamenti tra i nodi in modo toroidale.
+c'è un problema, ci sono dei cavi più lunghi di altri, quindi il tempo di latenza non è costante.
 
 n-ari k-cube: è una rete k-dimensionale in cui ogni nodo ha n vicini.
 2D torus è una rete 4-ari 2-cube.
@@ -738,7 +739,7 @@ Nodi sulle foglie e la struttura sovrastrante sono solo switch.
 
 - diametro: log(n)
 - degree: 3 constante
-- bisection bandwidth: 1 (bottleneck)
+- bisection bandwidth: 1 (bottleneck), risolto dal fat tree
 
 ## hypercube
 
@@ -766,9 +767,9 @@ La comunicazione puo' essere sovrapposta al calcolo in alcuni casi:
 
 - il produttore lo abbia già prodotto ma il consumatore non ne abbia ancora bisogno.
 
-Il tcp/ip solitamente non permette overlapping perchè fa chiamate al sistema operativo, quindi il sistema operativo deve essere coinvolto in ogni comunicazione, quindi calcolo e comunicazione avvengono in maniera sequenziale.
+Il tcp/ip solitamente non permette overlapping perchè fa chiamate al sistema operativo, quindi il sistema operativo deve essere coinvolto in ogni comunicazione, quindi calcolo e comunicazione avvengono in maniera sequenziale, se si vuole parallelizzare bisogna usare protocolli user space.
 
-Invece di avere un buco dove il processore scrive sul buffer(dopo aver finito un calcolo) invece di fare le operazioni di calcolo, demando ad un altro processore la scrittura del buffero ovvero la comunicazione.
+Invece di avere un buco dove il processore scrive sul buffer(dopo aver finito un calcolo) invece di fare le operazioni di calcolo, demando ad un altro processore la scrittura del buffer ovvero la comunicazione (infinyband, rdma, ecc...).
 
 Il modo più semplice di organizzare un sistema per fare overlapping è quello di avere un buffer in entrata, un buffer per i calcoli e un buffer in uscita.
 
@@ -797,7 +798,110 @@ Posso trasformarlo in un problema parallelo, questo significa prende il max, ovv
   - bloccante: il sender si blocca finche il messaggio non è stato preso in carico dal sistema che si occupa di inviarlo, non necessariamente dal receiver. Quando ho consegnato il messaggio al Sistema operativo ad esempio posso riprendere a fare altro.
   - non bloccante: il sender invia il messaggio e continua a fare altro, il receiver riceve il messaggio quando è pronto. Il programmatore si occupa di gestire l'invio e la ricezione del messaggio.
 
-# LEZIONE ? 19/04
+# LEZIONE 12 (5/04)
+
+## Metriche per misuarare le prestazioni
+
+- speedup: quanto è veloce il programma rispetto ad un altro
+- scalability: quanto è scalabile il programma, se raddoppio le risorse raddoppio le prestazioni?
+  - strong scalability
+  - weak scalability
+- efficiency: quanto sono efficienti le risorse utilizzate
+
+## Speedup
+
+Misura definita come rapporto tra il tempo di esecuzione di un programma su un singolo processore e il tempo di esecuzione su più processori.
+S(p) = T_1 / T_p
+
+Quando più veloce faccio se sostuisco un calcolatore con due, con 4, con 8, ecc... processori.
+In generale si pensa che se uso 8 calcolatori devo fare 8 volte più veloce, ma non è così, in quanto c'è un overhead di comunicazione, e quindi non posso fare 8 volte più veloce, ma meno.
+
+Questa metrica è pensata per hardware uniformi, non ha senso calcolare lo speedup di un programma su cpu rispetto a una gpu. La misura riguarda più che altro in numero di processori e non il tipo di processori.
+Su sistemi eterogenei è meglio chiamarlo benchmark.
+
+Lo speedup è lineare quando lo spedup massimo con p processori è p (s(P) = p)
+
+## Efficienza
+
+Definita come il rapporto tra lo speedup e il numero di processori.
+E = S(p) / p
+può essere riscritta come:
+E = T_1 / (p \* T_p)
+dove T_p é p è il costo della parellizzazione.
+
+Il caso ideale è quando l'efficienza è 1, in quanto significa che il costo della parallelizzazione è nullo. (quindi quando S(p) = p)
+
+## Scalability vs Speedup
+
+La differenza è che per lo speedup non è detto che i due algorithmi siano equivalenti, mentre per la scalabilità si.
+Lo speedup considera la migliore versione sequenziale dell'algoritmo.
+
+Scalability= T_par(1) / T_par(p)
+Speedup = T_seq / T_par(p)
+
+## Strong vs Weak scalability (stumenti di riferimento per il calcolo delle prestazioni)
+
+Si parla di speedup:
+
+- Strong scaling: la dimensione del problema è fissato; sto testando due algoritmi sullo stesso problema
+  - Generalmente parallelizzare significa spesso dividere il problema
+  - Nello strong scaling, visto che la dimensione rimane fissa, ogni processore lavora su un problema via via più piccolo all'aumentare di p, ad un certo punto il problema diventa troppo piccolo che non è più efficiente lavorarci sopra.
+- Weak scaling: al variare del numero di processori, varia anche la dimensione del problema
+  - A volte parallelizzare significa risolvere problemi più grandi (o con maggior precisione), non necessariamente risolverli più velocemente.
+  - Misura la capacità di un sistema di risolvere nello stesso tempo un problema più grande.
+  - Ho un macchina grande p e ci metto T, il problema è se riesco a risolvere un problema grande il doppio con una macchina grande il doppio.
+  - Si assume che la quantità di lavoro per processore rimanga costante (se radddoppio il numero di processori raddoppio anche il vettore).
+
+Nel progetto ricordarsi di aggingere grafici riguradanti strong e weak scaling. ([Paper progetti fatti da loro](https://www.researchgate.net/publication/352352041_Practical_Parallelization_of_Scientific_Applications_with_OpenMP_OpenACC_and_MPI/link/60dde8c5a6fdccb745fb9bcc/download?_tp=eyJjb250ZXh0Ijp7ImZpcnN0UGFnZSI6InB1YmxpY2F0aW9uIiwicGFnZSI6InB1YmxpY2F0aW9uIn19))
+
+## Computation to communication ratio
+
+La cosa che distingue un problema parallelo da uno sequenziale è principalmente il costo per la comunicazione, le operazioni rimangono pressochè le stesse.
+
+Un modo per valutare la bontà di un algoritmo parallelo è il computation to communication ratio, ovvero il rapporto tra il tempo di calcolo e il tempo di comunicazione.
+Infatti se il calcolo è poco non ci si può aspettare che il parallelismo sia migliore rispetto a quello sequenziale.
+
+## Super linear speedup
+
+Cioè che sta sopra il lineare, in generale se esistesse significherebbe che potrei costrurire un algo sequenziale migliore che non ha questo comportamento.
+
+In realtà potrebbe capitare per diversi motivi:
+
+- caching: più processori significa più divisione dei dati, quindi i dati sono più piccoli e ne stanno di più in cache, quindi va più veloce
+
+## Amdahl's law, su strong scaling
+
+é un modo di valutare un upper bound per lo speedup, ovvero il massimo speedup che posso ottenere.
+è più accurato rispetto a quanto fatto fin'ora ovvero ritenerlo lineare.
+
+Supponiamo di avere un codice che in alcune parti è seriale e in altre parallelo.
+
+Casi in cui ho comportamento seriale:
+
+- Seriale multicomputer: ad esempio lettura dei dati dal file system, gli altri nodi aspettano
+- Seriale multiprocessor: leggo il testo e lo divido in parole (Sequenziale, tokenizer), poi ogni processore conta le parole
+- Chiamate al SO: ad esempio per la comunicazione tra i processori
+- Sto usando l'interprete python
+
+Il tempo è dunque composto da due parti:
+
+- T_ser: tempo seriale
+- T_par: tempo parallelo
+
+Assumendo che il miglior speedup che posso ottenere sia lineare (Se ho p processori e il mio tempo è x allora ci metto x/p), allora
+T(p) >= T_ser + (T_par / p)
+
+Guardare slide per altre formule
+
+Supponiamo di avere un codice che ci mette 10, la metà è sequenziale l'altra è parallela.
+Suppenonendo di avere infiniti processori, il tempo si riduce a 5, in quanto la parte parallela si riduce a 0.
+Lo speedup è 2, in quanto 10/5 = 2
+
+Quindi con infiniti processori non riesco comunque a fare meglio di 2.
+
+## Gustafson's law, su weak scaling
+
+# LEZIONE 15 19/04
 
 ## Design pattern per architetture parallele
 
@@ -827,7 +931,7 @@ Posso trasformarlo in un problema parallelo, questo significa prende il max, ovv
 
   Guardare esempi su slide
 
-# Lezione ? + 1 (24/04)
+# Lezione 16 (24/04)
 
 ## User level message passing programming
 
