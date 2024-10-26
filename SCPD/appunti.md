@@ -437,7 +437,85 @@ gestione della inconsistenza della memoria:
   - associare a ogni linea di cache uno dei quattro stati
   - se voglio scrivere deve essere in stato E, le altre copie devono essere portati a I (la vera copia ce l'ho io, le altre sono invalidi)
 
-# Lezione 8 (20/03)
+# Lezione 8 (15/03)
+
+## Super scalar processor
+
+Le CPU moderne sono parallele, e usano una _mixed pipeline_.
+Ciò significa che il processore esegue più istruzioni contemporaneamente al fine di mantenere la pipeline piena e sfruttare al massimo le risorse disponibili:
+
+- Fetch multiple instructions in un singolo ciclo di clock
+- Li esegue _out-of-order_ (esegue le istruzioni pronte, che hanno gli operardi pronti) distribuendole a più ALU contemporaneamente
+- I risultati vengono riordinati prima di essere scritti, in modo da mantenere la correttezza del programma:
+  - Bernstein's conditions: condizioni che garantiscono che il riordinamento delle istruzioni non alteri il risultato del programma.
+  - Consiedera coppie di istruzioni potenzialmente dipendenti:
+    - write-read
+    - write-write
+    - read-write
+  - Se le istruzioni sono indipendenti, possono essere eseguite in parallelo.
+
+**SMT**: Simultaneous Multi-Threading, hyper-threading
+
+- Tecnica che consente a un singolo core di eseguire più thread contemporaneamente.
+- Ogni thread ha il proprio set di registri e program counter, ma condivide le altre risorse del core.
+- L'obiettivo è mantenere il core occupato quando un thread è bloccato (ad esempio, in attesa di dati dalla memoria).
+- L'implementazione di SMT può variare a seconda del processore (HW multithreading), ma in generale consente di eseguire più thread contemporaneamente, migliorando l'utilizzo delle risorse del core.
+- Il processore mantiene il contesto (registri, program counter, ecc.) per ogni thread e può passare rapidamente da un thread all'altro per mantenere il core occupato.
+
+Due tipi di **HW multithreading**:
+
+- **fine-grained**: il processore esegue istruzioni da thread diversi in modo alternato (interleaved), a livello di singole istruzioni.
+- **coarse-grained**: il processore effettua switch di thread al livello di thread, uno switch avviene quando un thread va in stallo.
+
+## Programming shared memory
+
+Il modo più semplice per programmare un sistema a shm è utilizzare i thread.
+I thread sono più leggeri dei processi, in quanto condividono lo stesso spazio di memoria.
+La creazione di un nuovo thread non alloca un nuovo spazio logico di indirizzamento, ma condivide quello del processo padre. (dalle 3 alle 5 volte più veloce di un processo)
+
+**Tempo creazione thread**: 10'000 cicli di clock
+
+- non creo un thread per fare una addizione, lo creo per fare un lavoro più complesso
+- stare intorno ad una grana computazionale: 100'000 cicli di clock
+
+La creazione di processi costa tanto in quanto la _fork_ deve allocare un nuova entry nella tabella di allocazione ma soprattutto deve copiare la memoria del processo padre nel processo figlio.
+
+3 aspetti:
+
+- creazione
+- trasferimento di dati
+- sincronizzazione
+
+## Thread creation
+
+Pthread create (standard posix thread) primitiva posix per la creazione di thread.
+
+```c
+#include <pthread.h>
+#include <stdio.h>
+
+void *my_thread(void *arg) {
+  printf("Hello from thread\n");
+  return NULL;
+}
+
+int main() {
+  pthread_t tid;
+  pthread_create(&tid, NULL, my_thread, NULL);
+  pthread_join(tid, NULL);
+  return 0;
+}
+```
+
+pthread_create riceve una funzione void* e un argomento void*.
+Esegue la funzione passata come argomento in un nuovo thread e ritorna un void.
+
+## Data race (DR)
+
+occorre quando due o più thread accedono alla stessa variabile e almeno uno di essi scrive e non ci sono meccanismi di sincronizzazione.
+Se due thread leggono la stessa variabile non c'è problema, ma se uno scrive e l'altro legge, allora si ha un problema.
+
+# Lezione 9 (20/03)
 
 Outline:
 
@@ -515,7 +593,80 @@ Su HPC compilare in loco è molto importante per ottimizzare le prestazioni. Il 
 - spack find `<nome del pacchetto>`: mostra la versione installata
 - spack find: mostra tutti i pacchetti installati
 
-# Lezione 9 (27/03)
+Per aprire una shell interattiva (ad esempio per provare programmi SHM):
+
+```bash
+srun -p broadwell --gpus=1 -pty bash
+```
+
+# Lezione 10 (22/03)
+
+## MUTEX
+
+Per evitare il Data race, si usano i mutex (mutual exclusion), che permettono di bloccare l'accesso ad una risorsa condivisa.
+L'idea è quella di accedere ad un segmento di codice in mutua esclusione, in modo che un solo thread possa accedere alla risorsa condivisa alla volta.
+In realtà è possibile definire un numero di thread che possono accedere alla risorsa condivisa contemporaneamente, ma è comunque un numero limitato, la differenza è lock e unlock(binari) o semafori (n-ari).
+
+Quando qualcuno prova ad accedere alla regione critica e trova il mutex bloccato, si mette in attesa, e quando il mutex viene sbloccato, il thread viene risvegliato.
+Ciò non garantisce il Data Race (riguarda la variabile, i mutex riguardano pezzi di codice), ma da gli strumenti per evitarlo.
+
+Se voglio evitare Data race devo farlo sia in scrittura che in lettura, impattando purtroppo sulle prestazioni.
+
+```c
+#include <pthread.h>
+#include <stdio.h>
+
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+void *my_thread(void *arg) {
+  pthread_mutex_lock(&mutex);
+  printf("Hello from thread\n");
+  pthread_mutex_unlock(&mutex);
+  return NULL;
+}
+
+int main() {
+  pthread_t tid;
+  pthread_create(&tid, NULL, my_thread, NULL);
+  pthread_join(tid, NULL);
+  return 0;
+}
+```
+
+## False sharing
+
+Un conto è garantire che una variabile venga letta e scritta una alla volta, un'altro è garantire che l'ordine delle istruzioni di scrittura e lettura sia rispettato.
+immaginiamo che core1 e core2 arrivvano alla memoria(o chache) attraverso un buffer di scrittura, il problema dell'ordine (o consistnza) deriva proprio dall'uso di questo buffer.
+
+Nel caso di alcuni processori (tipo Intel) la mutua esclusione effettua il flush dei buffer prima e dopo la lock. Questo garantisce che quando usciamo dalla mutua esclusione, allora la variabile condivisa sia stata aggiornata in memoria, in modo tale che se un altro core la legge, legge l'ultima versione. Questo non garantisce che l'ordine sia totale per tutte le variabili, ma solo parziale (queste operazioni richiedono del tempo).
+
+Questo non avviene per tutti i processori, infatti questa operazioni spendono energia, tipo i processori dei cellulari non lo fanno. i processori Arm non hanno la lock ma usano memory barrier, che garantisce che le operazioni siano eseguite in ordine. (questo è un problema per i programmatori, in quanto non sanno se il processore su cui sta girando il programma ha la lock o meno).
+
+Il false sharing riguarda le cache, se due variabili sono vicine in memoria (si pensi ad un array dove ogni core legge e scrive ogni cella), e due core le leggono e scrivono, allora le due variabili vengono messe nella stessa linea di cache, e quindi se un core scrive su una variabile, l'altra variabile viene invalidata (questo perche il protocollo che garantisce la coerenza della cache, invalida l'intera linea di cache, non solo la variabile che è stata modificata), e quindi il core che legge la seconda variabile deve andare a leggerla in memoria, e non in cache.
+In questo caso non si parla di Data race, ogni thread legge e scrive una variabile diversa, ma si ha un problema di prestazioni, in quanto si va a leggere in memoria e non in cache.
+Ogni core invalida il successivo, e quindi si ha un effetto domino.
+
+Per risolvere il problema si usa il data padding (lascio buchi nella struttura dati), al fine di garantire che le variabili siano in linee di cache diverse.
+Il modo migliore di farlo è definire strutture che siano di dimensione un multiplo della dimensione della linea di cache. In questa struct ci metto una parte di dati e una parte di padding (spazio vuoto).
+
+Un'altro modo è usare una grana computazionale, tipo due for annidati: uno scorre da blocchi di grana della stessa dimensione della linea di cache o multipli, e l'altro scorre all'interno gli elemnti all'interno della grana. Questo si traduce nell'assegnare al thread non una singola cosa da fare ma un po' di cose da fare.
+
+Quello della grana è il miglior modo e quello più semplice per risolvere problemi di prestazioni.
+
+Il codice va pensato in due fasi:
+
+- ciò che succede dentro il core
+- ciò che succede fra core
+
+se ho mem distrubita sono 3:
+
+- ciò che succede dentro il thread
+- ciò che succede dentro il nodo
+- ciò che succede fra nodi
+
+poi rimane che fare fine tuning, se non va bene in termini di prestanzioni si aumenta la grana fino a raggiungere l'esecuzione simile al codice sequenziale.
+
+# Lezione 10 (27/03)
 
 ## Sistemi di interconnessione
 
@@ -598,7 +749,7 @@ Puo' essere implementata con più switch(fig 2/2), in modo da avere più banda d
 k-ary n-fly
 k + k/2 switch totali
 
-# Lezione 10 (3/04)
+# Lezione 11 (3/04)
 
 ## Dragonfly, caso multi-level
 
@@ -800,3 +951,7 @@ Tutto parte dalla CPU, per natura queste componenti eseguono in maniera asincron
 Estensione di C++ per scrivere programmi per GPU.
 Permette di creare griglie di thread, ognuno di questi organizzati a blocchi. Quindi una griglia di blocchi.
 La GPU è organizzata in streaming multiprocessor, ogni streaming multiprocessor ha un certo numero di core e una area di memoria condivisa per i thread. Tutti leggono la memoria della GPU, ma la shared memory è condivisa solo tra i thread di uno stesso blocco.
+
+```
+
+```

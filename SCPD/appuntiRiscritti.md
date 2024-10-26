@@ -1,4 +1,3 @@
-
 # Lezione 7 (13/03)
 
 ## Riassunto
@@ -63,6 +62,7 @@ I set di istruzioni di un processore possono essere classificati come:
   - Poche istruzioni, circa 100.
   - Ogni istruzione occupa una sola parola di memoria, e ci sono istruzioni dedicate per gestire gli indirizzi (load/store).
   - Più prevedibile, quindi più facile da ottimizzare.
+
 - **CISC** (Complex Instruction Set Computer):
 
   - Esempio: x86 (Intel, AMD).
@@ -97,6 +97,7 @@ Esistono due politiche principali per la scrittura in cache:
   - Scrittura sia in cache che a tutti i livelli di memoria.
   - Più lenta, ma più sicura.
   - La scrittura è propagata ai livelli superiori con un ritardo.
+
 - **Write back**:
 
   - Scrittura solo in cache, con marcatura della linea come modificata.
