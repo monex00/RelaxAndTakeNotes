@@ -846,11 +846,13 @@ Si parla di speedup:
 - Strong scaling: la dimensione del problema è fissato; sto testando due algoritmi sullo stesso problema
   - Generalmente parallelizzare significa spesso dividere il problema
   - Nello strong scaling, visto che la dimensione rimane fissa, ogni processore lavora su un problema via via più piccolo all'aumentare di p, ad un certo punto il problema diventa troppo piccolo che non è più efficiente lavorarci sopra.
+  - Si concentra nel risolvere il problema con più risorse (più velocemente).
 - Weak scaling: al variare del numero di processori, varia anche la dimensione del problema
   - A volte parallelizzare significa risolvere problemi più grandi (o con maggior precisione), non necessariamente risolverli più velocemente.
   - Misura la capacità di un sistema di risolvere nello stesso tempo un problema più grande.
   - Ho un macchina grande p e ci metto T, il problema è se riesco a risolvere un problema grande il doppio con una macchina grande il doppio.
   - Si assume che la quantità di lavoro per processore rimanga costante (se radddoppio il numero di processori raddoppio anche il vettore).
+  - Si concentra nel risolvere problemi più grandi(a parità di tempo o migliorandolo).
 
 Nel progetto ricordarsi di aggingere grafici riguradanti strong e weak scaling. ([Paper progetti fatti da loro](https://www.researchgate.net/publication/352352041_Practical_Parallelization_of_Scientific_Applications_with_OpenMP_OpenACC_and_MPI/link/60dde8c5a6fdccb745fb9bcc/download?_tp=eyJjb250ZXh0Ijp7ImZpcnN0UGFnZSI6InB1YmxpY2F0aW9uIiwicGFnZSI6InB1YmxpY2F0aW9uIn19))
 
@@ -900,6 +902,148 @@ Lo speedup è 2, in quanto 10/5 = 2
 Quindi con infiniti processori non riesco comunque a fare meglio di 2.
 
 ## Gustafson's law, su weak scaling
+
+Vorrei mantenere costante il tempo di esecuzione sul singolo processore, aumentatando le cose da fare e il numero di processori.
+Guardare slide.
+
+# LEZIONE 13 (12/04)
+
+## Modelli astratti di computazione: PRAM
+
+Servono a capire come si comporta un algoritmo in parallelo su una architecture astratta parallela.
+
+## PRAM
+
+Parallel Random Access Machine:
+
+- no cache
+- no Numa(Non Uniform Memory Access): cioè UMA, ovvero ogni processore ha un tempo di accesso alla memoria uguale (uniforme, costa lo stesso tempo)
+- no overhead di sincronizzazione: la sincronizzazione costa 0
+
+La comunicazione tra processori avviene tramite i meccanismi della memoria condivisa.
+
+I processori operano in lock-step: ogni processore esegue la stessa istruzione nello stesso istante, sono tutti sincroni, fanno tutti la stessa cosa contemporaneamente.
+Impossibile da realizzare in pratica, ma è un modello astratto.
+
+Gli studi degli algo su questo sistema determinano perlomeno un lower bound per la velocità di un algoritmo parallelo, su un sistema reale non avrò mai una velocità maggiore di quella determinata da questo modello.
+
+Guardare slide per le fasi di un istruction cycle.
+
+## BSP (Bulk Synchronous Parallel)
+
+Oltre che un modello potrebbe essere un paradigma di programmazione parallela.
+
+Consiste di tre parti:
+
+- colleziono dati dalla memoria
+- scambio messaggi con altri processori(point to point)
+- sincronizzo tutti processori tramite un barriel
+
+Nel PRAM, la sincronizzazione avveniva istruzione per istruzione, qui avviene a blocchi.
+
+Nel PRAM si assume una memoria condivisa, qui no, ogni processore ha la sua memoria e attraverso una rete di comunicazione si scambiano messaggi.
+Si assume che accedere alla memoria "remota" (degli altri processori) abbia un tempo uniforme.
+
+Gli algoritmi si dividono in superstep, ogni processore può finire il suo superstep in tempi diversi, ma non può iniziare il successivo finchè tutti gli altri non hanno finito il loro.
+Si dividono in fasi:
+
+- calcolo
+  - sincronizzazione
+- comunicazione
+  - sincronizzazione
+- calcolo (si ripete)
+
+# LEZIONE 14 12/04
+
+Ricordiamo che il c non supporta la programmazione parallela, quindi bisogna usare delle librerie o delle direttive per farlo.
+Si possono usare i pthead, ma non sono parte del linguaggio, l'idea è quindi di estendere linguaggi sequenziali per fare programmazione parallela.
+
+## OpenMP
+
+Open multi Processing, libreria di programmazione shared memory, permette di scrivere programmi paralleli in maniera semplice.
+Estende dei linguaggi sequenzali come C, C++, Fortran, ecc...
+
+Si basa sull'idea di direttiva, una direttiva o pragma è una istruzione che dice al compilatore di fare qualcosa di diverso rispetto a quello che farebbe normalmente.
+Possono essere liberamente ignorate dal compilatore nel caso non le riconosca.
+
+Ci sono anche funzioni, in quanto ho bisogno di informazioni a livello di runtime, come ad esempio il numero di thread.
+La direttiva è invece interpreata a livello di compilazione.
+
+Ha anche delle variabile di ambiente, settata dalla shell e lette a runtime.
+
+è pensato per il parallellismo a memoria condiviso, intra-node. Si è provato a estenderlo per distrubited memory, ma non è stato molto efficace.
+Programma ciò che avviene nel nodo.
+
+Nasce come libreria per parallelizzare loop, si concentra sul come trasformare un programma sequenziale in parallelo.
+
+Normalmente lavora su un thread pool, ovvero un insieme di thread che vengono creati all'inizio e poi riutilizzati, anche se c'è la possibilità di creare e distruggere thread dinamicamente.
+
+## Sequential equivalance
+
+OpenMp deve garantire che il programma parallelo abbia lo stesso comportamento del programma sequenziale.
+Garantisce un comportamente parallelo incrementale, ovvero permette di specificare il grado di parallelismo.
+Se dico di andare con un thread solo allora esso garantisce che si comporti come il programma sequenziale.
+Stessa cosa se lo compilo senza il flag di parallelizzazione (-fopenmp).
+
+Di default il numero di thread è 1, se non specificato.
+
+## Fork-join model
+
+OpenMp si basa sul modello dei pthread, fornendo una libreria più ad alto livello.
+
+Il programma parte con un master thread, è sequenziale finchè non trova una direttiva di parallelizzazione,
+a quel punto si divide in più thread per una regione parallela, alla fine ho normalmente una barrier(sincronzizazzione)
+
+In generale questo è lo schema:
+
+- una parte sequenziale
+- una parte parallela
+- una barrier per la sincronizzazione (è di default ma può essere tolta)
+
+Si comporta quindi come il modello astratto BSP.
+
+Master thread -> fork -> parallel region -> join (barrier) -> master thread
+il master thread rappresenta la parte sequenziale, mentre i thread paralleli rappresentano la parte parallela.
+
+## Relaxed consistency
+
+Thread in parallelo accedono alla memoria in Relaxed consistency (variante del weak-ordering) in cui sia non viene garantito un ordinamento tra load e store, l'unico modo è usare una memory barrier.
+se ho due thread, uno scrivo e l'altro legge, anche se la lettura avviene dopo, non ho garanzie che la lettura legga il valore scritto, a meno che non metta una memory barrier in mezzo.
+Dovrei rompere il super step e andare a leggere nel super step successivo.
+
+Ogni thread ha una sua vista temporanea sulla memoria.
+
+## Memory barrier
+
+Memory barrier si ottiene attraverso una flush. Garantisce che il valore scrittto veramente arriverà in memoria.
+e dopo una flush in thread leggerà veramente il valore scritto.
+Se ho più thread che scrivono, non ho ci serve a niente la flush, non garantisce l'ordine tra le scritture.
+Constringe la cache a essere scritta in memoria, comportando un costo in termini di prestazioni.
+La flush è implicita alla fine di una regione parallela, durante la sincronizzazione.
+In realtà lock e memory barrier sono concetti diversi:
+
+- lock: sceglie un thread che può accedere alla risorsa
+- memory barrier: committo le scritture in memoria
+
+nel caso di Intel le due operazioni avvengono insieme. Per Arm non è così, e quindi bisogna fare attenzione.
+
+## Variabili condivise
+
+Una variabile definita nel blocco sequenziale diventa condivisa nel blocco parallelo.
+Posso però definirla privata, questo significa che ogni thread ha una sua copia della variabile.
+Inoltre posso devinirla firstprivate, ovvero ogni thread ha una copia della variabile inizializzata con il valore della variabile nel blocco sequenziale.
+Oppure lastprivate, ovvero ogni thread ha una copia della variabile inizializzata con l'ultimo valore della variabile nel blocco parallelo(?).
+
+## Direttive
+
+```c
+#pragma omp parallel num_threads(4)
+{
+  // codice parallelo eseguito da 4 thread, di default il numero di thread è il numero di core
+}
+```
+
+(altri esempi su slide)
 
 # LEZIONE 15 19/04
 
