@@ -1052,7 +1052,7 @@ Oppure lastprivate, ovvero ogni thread ha una copia della variabile inizializzat
 - control parallel:
 
   - mi faccio guidare dal flusso di esecuzione
-  - task, stream parallelism
+  - task, stream parallelism:
   - task: funzione con dei dati in input e dei dati in output, rispetto ad una fuznione normale cambia che qua vengono dichiarati anche i dati in output. Inoltre i task non possono vedere i dati globali come ad esempio possono fare le funzioni normali. Vengono chiamate funzioni senza stato. E non possono connetersi con nulla che abbia uno stato, tipo un db o un file.
   - stream: nel caso del task sto definendo una funzione da eseguire, nel caso dello stream sto definendo degli esecutori. Ho una sequenza di input e output, una pipeline di esecutori con un flusso di dati che scorre tra di loro.
 
@@ -1070,10 +1070,69 @@ Oppure lastprivate, ovvero ogni thread ha una copia della variabile inizializzat
   - Esempi:
     - big data
     - Dnn/gen ai
+    - GPU
 
   ## OPENMP
 
-  Guardare esempi su slide
+  Per adesso ci siamo concentrati sul data parallel, andando a parallellizzare i loop.
+  Adesso ci concentriamo sul task parallel che in openMP si realizzano con le Sections.
+
+  ### Sections
+
+```c
+#pragma omp parallel
+{
+  #pragma omp sections
+  {
+    #pragma omp section
+    {
+      task1();
+    }
+    #pragma omp section
+    {
+      task2();
+    }
+  } // implicit barrier
+} // implicit barrier
+```
+
+Ogni section è eseguita da un thread, differenti section possono essere eseguite da differenti thread. Dico possono perchè non è garantito, potrei avere un solo thread e quindi le section vengono eseguite sequenzialmente.
+
+Alla fine della direttiva "sections" c'è una barrier.
+
+### Primitive di sincronizzazione
+
+- barrier: aspetta che tutti i thread abbiano raggiunto un punto
+- single: (come sections, ma con una sola section) assegna un blocco di codice a un solo thread, il primo che arriva, gli altri lo skippano, ma aspettano per via di una barrier implicita alla fine del bloccato
+- master: assegna solo al master(thread con id 0), non c'è barrier implicita alla fine
+- critical: Tutti i thread eseguono il blocco, ma uno alla volta, gli altri aspettano
+- ordered: nei loop assicura non ci sia data race tra dipendenze.
+- atomic: operazioni atomiche, non possono essere interrotte da altri thread
+
+### Task
+
+Ci sono anche i task, che non sono nient'altro che una evoluzione delle section, in quanto posso fare cose più complesse in maniera più flessibile.
+Ho una coda di cose da fare e un pool di thread che le esegue.
+(meglio usare i task invece che le sections)
+
+```c
+#pragma omp parallel
+{
+  #pragma omp single
+  {
+    #pragma omp task
+    {
+      task1();
+    }
+    #pragma omp task
+    {
+      task2();
+    }
+  } // implicit barrier
+} // implicit barrier
+```
+
+Guardare esempi su slide
 
 # Lezione 16 (24/04)
 
@@ -1094,6 +1153,10 @@ Due modi di scrivere un programma con queste premesse:
   - Gli viene passato un identificativo al momento dell'esecuzione per capire quale copia è.
   - In funzione di questo identificativo il programma può fare operazioni diverse.
   - bisogna sfruttare bene l'allocazione dinamica in maniera da non avere problemi di memoria.
+
+Ogni processo ha uno spazio logico di indirizzamento ma ha anche uno spazio kernel logico di indirizzamento.
+Per spazio Kernel si intende la memoria che il sistema operativo può vedere, mentre per spazio logico si intende la memoria che il processo può vedere.
+Quando avviene una write su un socket il messaggio viene copiato nello spazio kernel, e poi viene copiato nel buffer del socket.
 
 ## MPI
 
@@ -1118,8 +1181,8 @@ Concetti base:
 - Quanti:
   - Simmetrica: point-to-point 1:1
   - Asimmetrica o collettiva: 1:n, puo' avvenire tramite un comunicatore, un gruppo di processi che comunicano tra loro.
-    - In MpI vengono chiamate operazioni colletive, perchè spesso comportano fare un calcolo ad esempio la reduce.
-    - Per questo per alcuni MPI è un modello di comunicazione e per altri è un modello di calcolo.
+    - In MpI vengono chiamate **operazioni** collettive, perchè spesso comportano fare un calcolo ad esempio la reduce.
+    - Per questo per alcuni MPI è un modello di comunicazione e per altri è un modello di programmazione che mischia calcolo e comunicazione.
 - Temporizzazione:
   - sincrona: il processo che invia si blocca finche il processo che riceve non ha ricevuto il messaggio
   - asincrono:
@@ -1145,7 +1208,7 @@ Concetti base:
   - tag: tag del messaggio
   - comm: comunicatore
   - status: struct di tipo MPI_Status, contiene informazioni sul messaggio ricevuto
-    -MPI_Isend(...) e MPI_Irecv(...): non bloccanti
+    - MPI_Isend(...) e MPI_Irecv(...): non bloccanti
   - permettono di inviare e ricevere messaggi in maniera asincrona
   - hanno un parametro in più cioè un puntatore a una variabile di tipo MPI_Request che permette di controllare lo stato dell'operazione
   - MPI_Wait: blocca il processo fino a che il messaggio non è stato inviato o ricevuto
