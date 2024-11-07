@@ -1186,8 +1186,12 @@ Concetti base:
 - Temporizzazione:
   - sincrona: il processo che invia si blocca finche il processo che riceve non ha ricevuto il messaggio
   - asincrono:
-    - bloccante: processo che invia si blocca finche il messaggio non è stato preso in carico dal sistema che si occupa di inviarlo, non necessariamente dal receiver. Quando ho consegnato il messaggio al Sistema operativo ad esempio posso riprendere a fare altro.
+    - bloccante:
+      - processo che invia si blocca finche il messaggio non è stato preso in carico dal sistema che si occupa di inviarlo, non necessariamente dal receiver. Quando ho consegnato il messaggio al Sistema operativo ad esempio posso riprendere a fare altro.
+      - processo che riceve legge dal buffer, se è vuioto si blocca finche non arriva il messaggio
     - non bloccato: il sender invia il messaggio e continua a fare altro, il receiver riceve il messaggio quando è pronto. Il programmatore si occupa di gestire l'invio e la ricezione del messaggio.
+
+# Leazione 17 (03/05)
 
 # Lezione 19 (15/05)
 
@@ -1221,7 +1225,19 @@ Quindi in funzion della scheda di rete la Isend e la Irecv potrebbe essere peggi
 
 ## Send Communication Modes
 
+Oltre alla distinzioni tra Simmetrico e Asimmetrico, Sincrono e Asincrono, ci sono altre distinzioni:
+
+- Standard Mode Send
+- Buffered Mode: noi prorgammatori ci prendiamo carico di gestire la memoria del canale (buffer_attach)
+- Synchronous Mode: Send e receive possono partire una dopo l'altra ma possono solo completare insieme
+- Ready Mode: Send che funziona solo se la receive è già in attesa
+
+Alcune combinazione hanno davvero poco senso.
+
 ## Collective communication
+
+Comunicazione non più 1:1 ma 1:n, n:1, n:n.
+Guardare esempi su slide.
 
 Esempio:
 tutti i processi hanno un array data da 10.
