@@ -1282,3 +1282,133 @@ La GPU è organizzata in streaming multiprocessor, ogni streaming multiprocessor
 ```
 
 ```
+
+## Lezione 21 (24/05)
+
+### Esame:
+
+Progetto con relazione e orale.
+La relazione deve spiegare i ragionamenti fatti in progettazione, quali strumenti sono stati usati, quali accorgimenti sono stati fatto al fine di migliorare le performance.
+Usare un numero ragionevole di risorse e perchè abbiamo fatto questa scelta.
+Gli esperimenti devono essere fatti almento 3 volte, riportando media e errori.
+Usare i timer in maniera corretta.
+Non raccontare il codice, ma le scelte e le decisione fatte durante la progettazione.
+Come scegliere se usare shm o distrubited memory?
+
+- shm sempre più semplice, codice che funziona
+  - più semplice perchè la memoria è condivisa, non costringe a dividere i dati tra processi
+  - in distrubited memory la prima cosa è capire come dividere i dati, bisogna dividerli in modo più adatto al problema.
+
+### Come progettare applicazioni MPI?
+
+Task e data parallelsim vale anche per MPI. In realtà non dipendono dalle libreria o dal dispositivo hardware(CPU o GPU).
+
+Emberassly parallel: il problema è per natura composto da task indipendenti quindi è facile da parallelizzare.
+
+Paradigmi:
+
+- Control parallel
+- Data parallel
+  - Map
+  - Reduce
+  - Stencil
+
+### Data parallelism in MPI
+
+Fa leva sul fatto che se ho tanti dati ho tanto parallelismo. Tutto ciò che gira su GPU è data parallel.
+2 tipi:
+
+- Fully Synchronous: tutti i proccessi ad un certo punto, una o più volte, devono sincronizzarsi, contatto O(n) processi
+  - Tramite barriere o altre operazioni collettive.
+  - In questo caso la cosa migliore è avere attività ben load balanced, ovvero che arrivano alla barriera tutte insieme.
+- Locally Synchronous: ogni processo si sincronizza con i suoi vicini, contanto solo O(k) processi
+
+### Globally Synchronous:
+
+- Si pensa ad un processo iterativo in cui c'è una sincronizzazione all'interno.
+- Deadlock: occorre quando ci sono più processi che si aspettano a vicenda, capita spesso con primitive sincrone.
+- Vantaggi:
+  - semplice da pensare, una applicazione a fasi: fase1, tutti hanno finito la fase1, fase2, ecc..
+  - Alla fine di una fase si preprarano i dati del prossima fase
+  - Esempio: training parallelo di diversi batch su diversi nodi, ogni nodo usa dati diversi, poi i pesi vengono aggregati tramite media. Potrei usare una all reduce.
+    - Per rendolo efficiente: grana giusta, load balancing, efficienza della comunicazione.
+
+#### Paritioning
+
+- block allocation: distribuisco i dati in blocchi, ogni processo ha un blocco di dati
+- cyclic allocation: distribuisco i dati in maniera ciclica, primo elemento al primo processo, secondo al secondo, ecc... poi ricomingio in maniera ciclica
+
+### Locally Synchronous:
+
+Comunicare con un numero fissato di processi, non con tutti.
+In qualche modo le simulazioni si prestano bene a questo tipo di sincronizzazione, solutamente un elemento dipende da i vicini.
+
+Esempio: distrubuzione del calore, data una sorgente di calore in un punto studiare come esso si distribuisce in un ambiente.
+Il problema al tempo 1 dipende dal problema al tempo 0 e dato un punto esso dipende dai vicini.
+Anche i filtri alle immagini sono un esempio. Anche le compressioni.
+
+Guardare stencil e halo swapping.
+Stencil: dato che ogni punto dipende da sui vicini, replico quello che si chiama alone, cioè i dati dei vicini, in modo da poter calcolare il punto.
+Poi alla prossima iterazione faccio haloswapping al fine di poter andare a calcolare i valori presenti negli aloni precedenti.
+Guardare simple-halo-swapping.c
+
+## Lezione 23 (29/05)
+
+Oggi le GPU sono usatissime al fine di fare Deep Learning, sono il dispositivo che ha permesso alle ai di funzionare davvero.
+
+AI 4 scienze: utilizzo di ai che combina Deep learning con il calcolo scientifico.
+
+Nascono per accellerare il calcolo delle CPU per alcune specifiche operazioni, in particolare quelle per il calcolo grafico, ora in realtà si definiscono come GPGPU, general purpose GPU. Potrebbero in futuro riprendere una via più specifica sulle AI.
+
+Throughput computing: è un tipo di calcolo che si basa sul throughput, ovvero la quantità di dati che posso processare in un certo tempo. Le GPU sono molto adatte a questo tipo di calcolo. Non va bene per calcoli real time, in quanto la latenza è molto alta.
+
+CPU-STyle core: dispositivo parallelo anche all'interno del singolo core, dove il parallelismo è pensato senza dover modificare il codice, si ottiente eseguendo in pipeline, dividendo le singoli istruzioni in più fasi: fetch, decode, execute, writeback. Nel tempo si è ottimizzato l'esecuzione dello stream di istruzioni, una architettura pipeline lavora su stream di istruzioni.
+I colli di bottiglia sono due:
+
+- velocità memoria: mi serve una grande chache
+- data dependency, o bolle: tramite meccaniscmi di out-of-order execution si cerca di ridurre il numero di bolle, ovvero di istruzioni che non possono essere eseguite perchè dipendono da altre istruzioni o dati che non hanno.
+
+Pipeline funziona bene se tutti gli stadi hanno più o meno lo stesso tempo di servizio, funziona male se uno stadio è molto più lento degli altri, in quanto si creano delle bolle.
+
+Le if sono un problema per il pipeline, in quanto non si sa quale istruzione eseguire, visto che la pipeline procede caricando la prossima istruzione mentre esegue la corrente. si potrebbe fare branch prediction, ovvero prevedere quale sarà il prossimo branch, e caricare le istruzioni di conseguenza, se la predizione è sbagliata si creano delle bolle.ù
+
+out-of-order-control logic: sfrutta le condizioni di Bernstein per eseguire le istruzioni in maniera out-of-order, ovvero in maniera diversa da quella in cui sono state scritte. Si cerca di eseguire le istruzioni in parallelo, in modo da ridurre il tempo di esecuzione e di eseguire istruzioni che non dipendono da altre.
+
+### Idea 1
+
+semplificare l'architettura eliminando tutto ciò che non è pensato per il calcolo in modo di aumentare, in termini di superficie del chip, il numero di core.
+Tolgo tutto ciò che serve per fare ottimizzazione del calcolo: cache e oggetti per eliminare le bolle(out-of-order execution, branch prediction, memory pre-fetching).
+
+Perche non posso fare chip più grande? Preso un chip, questo deve avere un ciclo di clock, un segnale che si muove alla velocità della luce. la luce in un quarto di nano secondo, che sono 4 Ghz, quanto percorso fa? meno di 10 cm. Se la distanza è maggiore di 10 cm, il segnale non arriva in tempo, quindi non posso fare chip più grandi.
+Inoltre più la superficie è grande più è difficile fare chip perfetti, in quanto la probabilità di avere un errore aumenta. Il costo sale in maniera esponenziale.
+
+Così si arriva all'idea di multicore che si basa nel salvare transistor da deciare in diverse copie del semplice core.
+
+Il problema rimane il collo di bottiglia sulla memoria, ho tantissimi core che devono accedere alla stessa memoria, quindi ho un problema di banda. Memory wall: la memoria non riesce a tenere il passo con i core, memorie più grandi, non più veloci.
+
+Alcune volte è meglio usare un processore multi-core con meno core della generazione precedente con un ciclo di clock piu' alto rispetto ad uno con più core e un ciclo di clock più basso.
+Se aumentiamo il numero di clock quasi sempre dobbiamo abbasare la frequenza, in quanto la dissipazione di calore è proporzionale alla frequenza.
+
+l'ottica di chi voleva progettare GPU era quella di passare da 16 a 6000 core, ma se abbiamo già
+un problema con 16 core, figuriamoci con 6000.
+
+### Idea 2
+
+Ci sono dei modi per ridurre l'indipenda della memoria, SIMD processing, Single Instruction Multiple Data, ovvero eseguire la stessa istruzione su più dati diversi. Questo è quello che fanno le GPU, eseguono la stessa istruzione su tanti dati diversi. Questo riduce il numero di accessi alla memoria, in quanto si accede una volta sola per tanti dati.
+
+GPU design assumtion, si assume solo data-parallelism, al fine di ammortizzare i costi di gestionre uno stream di istruzioni tra tantissime ALU.
+
+SIMD porta un vantaggio se ho tanti core, questi non eseguono tutti stream di dati diversi, ma eseguono tutti lo stesso stream: non devo prndere dalla memoria diverse istruzioni ma solo una.
+Per fare operazioni spesso non leggo dati dalla memoria, solo la load e la store lo fanno, mentre le istruzioni devono necessarimente essere prese dalla memoria.
+
+Problemi: non sa eseguire l'if, l'if significherebbe che qualche core esegue una istruzione qualc'unaltro ne esegue un'altra: non più SIMD.
+La soluzione è che tutti i core faranno sia il ramo then che il ramo else, e poi scarteranno quello che non serve(non lo scrivono in memoria).
+
+Come rendo questo oggetto facilemente programmabile?
+Devo intoltre evitare di fare tanti context switch, l'ìdea è di tenere tutto nei registri, in modo da non dover fare accessi alla memoria. Devo avere dei registri sicuramente per ogni core, ma anche per ogni thread, in modo da poter fare context switch tra i thread senza dover andare in memoria.
+
+Diventa SIMT: Single Instruction Multiple Thread, un programma è fatto di tanti thread, sempre lo stesso, tutti i thread eseguono insime, non è detto che tutti eseguano la stessa istruzione, magari eseguono la stessa istruzione senza effetti in memoria: divergenza spiegata sopra.
+
+**In SIMD si associano i dati agli esegutori**, **in SIMT si associano agli esegutori i thread**. Poi il thread1 è libere di accere all'ememtno 1 dell'aray, ma è una decisione del thread.
+
+Il modello GPU è SIMT, libera dalla dipendenza della singola istruzione, sto richiedendo che la stessa istruzione di thread diversi sia eseguita in qualsiasi ordine rispetto agli altri thread.
