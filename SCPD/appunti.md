@@ -1,8 +1,3 @@
-| col1 | col2 | col3 |
-| ---- | ---- | ---- |
-|      |      |      |
-|      |      |      |
-
 # Introduzione al Calcolo Parallelo e Distribuito (23/02)
 
 ## Differenza tra Calcolo Parallelo e Distribuito
@@ -30,11 +25,26 @@ La "Free Lunch Era" si riferisce al periodo in cui si riteneva che l'aumento del
 
 Implicazioni di questa transizione includono una maggiore enfasi su microarchitetture ottimizzate, riduzione delle latenze, integrazione di maggiori cache nei processori, e una ricerca costante verso l'efficienza energetica.
 
+I limiti fisici del single-chip processor sono principalemente due:
+
+- **Velocità della luce** :
+
+  - **Limite** : La velocità alla quale i segnali elettrici si propagano nei materiali è fisicamente vincolata. Anche nei migliori semiconduttori, la velocità di propagazione è inferiore alla velocità della luce nel vuoto e questo crea **ritardi di propagazione** nei circuiti.
+  - **Perché è un limite** : Man mano che i chip diventano più complessi e grandi, i segnali richiedono più tempo per viaggiare da una parte all'altra del chip, creando problemi di sincronizzazione (clock skew) e rallentando l'esecuzione complessiva. La riduzione delle dimensioni dei transistor non risolve i ritardi fisici di trasmissione.
+
+- **Power density (densità di potenza)** :
+
+  - Ridurre le dimensioni dei transistor (scaling) aumenta la densità di transistor per unità di superficie, incrementando la capacità di calcolo.
+
+  * Tuttavia, più transistor in un'area ristretta generano **più calore** per la stessa area.
+
 ## Gestione della Cache
 
 La cache, elemento cruciale per l'efficienza del calcolo, opera in trasparenza rispetto all'utente, simulando l'accesso alla memoria principale ma offrendo tempi di risposta significativamente inferiori. La gestione della cache implica strategie di mappatura degli indirizzi e politiche di rimpiazzamento, come il Least Recently Used (LRU), per ottimizzare l'accesso ai dati frequentemente utilizzati.
 
 Questa introduzione mira a fornire una panoramica concisa e informativa sul calcolo parallelo e distribuito, evidenziando le sfide, le strategie e le architetture chiave in questo ambito.
+
+Le chache permettono di superare il Von Neumann bottleneck, ovvero il collo di bottiglia dovuto alla differenza di velocità tra la CPU e la memoria principale. La cache permette di memorizzare i dati più frequentemente utilizzati vicino alla CPU, riducendo i tempi di accesso e migliorando le prestazioni complessive.
 
 # Lezione 4 1/03 (MIT slides)
 

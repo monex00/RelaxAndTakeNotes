@@ -4,6 +4,20 @@
 #include <chrono>
 #include <omp.h>
 
+/**
+ * @file omp_hello3.cpp
+ * @brief A simple OpenMP program that demonstrates parallel execution with a specified number of threads.
+ * 
+ * This program prints a "Hello from thread" message from each thread and measures the execution time.
+ * The number of threads can be specified as a command-line argument. If the number of threads is 
+ * greater than or equal to 5, the parallel region is executed with the specified number of threads.
+ * 
+ * @param argc The number of command-line arguments.
+ * @param argv The command-line arguments. The first argument (argv[1]) specifies the number of threads.
+ * 
+ * @return int Exit status of the program.
+ */
+
 int main(int argc, char *argv[]) {
 	using namespace std::chrono_literals;
 

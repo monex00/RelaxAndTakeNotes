@@ -2,6 +2,15 @@
 
 #include <omp.h>
 
+/**
+ * @brief Entry point of the program.
+ * 
+ * This function uses OpenMP to create a parallel region where multiple threads
+ * are spawned. Each thread prints a message indicating its thread number and 
+ * the total number of threads.
+ * 
+ * @return int Exit status of the program.
+ */
 int main() {
   #pragma omp parallel
   {  // <- spawning of threads
