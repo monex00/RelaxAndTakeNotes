@@ -1,4 +1,4 @@
-# Introduzione al Calcolo Parallelo e Distribuito (23/02)
+# eIntroduzione al Calcolo Parallelo e Distribuito (23/02)
 
 ## Differenza tra Calcolo Parallelo e Distribuito
 
@@ -82,9 +82,9 @@ Il compilatore può ottimizzare il codice in vari modi, in realtà si basta su o
 
 Il parallelismo può essere esteso all'interno dei singoli core attraverso il calcolo vettoriale, che consente di eseguire più operazioni simultaneamente su set di dati. Questo approccio, supportato da estensioni hardware come SSE e AVX, trova applicazione in ambiti specifici come l'elaborazione di immagini e video, ma anche in librerie di calcolo scientifico come PyTorch e TensorFlow.
 
-# Classificazione di archittetture parallele
+# Lezione 5 (6/03) - 4 Classification
 
-Divisione tra:
+## Divisione tra:
 
 - Singolo server
 - Cluster: nodi connessi in rete
@@ -132,8 +132,6 @@ Se la memoria è una shared memory, le api sono 3:
 - lock: signature `lock(addr: int) -> void` (verificare?) (leggi e scrivi in maniera atomica)
 
 Per quanto riguarda la CPU: è il suo linguaggio macchina
-
-# Lezione 5 (6/03) - 4 Classification
 
 ## Parallel Architectures
 
@@ -283,7 +281,7 @@ Oggi il tempo per accedere alla memoria è molto maggiore rispetto al tempo per 
 
 La chache L3 è sia condivisa tra core che distribuita tra nodi (diversi socket).
 
-## hyper threading
+## hyper threading (esempio di SMT)
 
 I processori moderni utilizzano un'architettura chiamata pipeline, che suddivide l'esecuzione delle istruzioni in diverse fasi, tipicamente:
 
@@ -768,7 +766,11 @@ Più livelli, i grandi sistemi normalmente sono costruiti per livelli., per nece
 
 ## Modello lineare affine
 
-t_0 + n \* s
+t_0 + n \* s es: 10 + 50 \* 1/50 = 10 + 1s
+
+s = 1 / b -> b = bandwith = 50mb/s
+
+n = numero di bit
 
 ## Computation to communication level
 
@@ -1042,7 +1044,7 @@ nel caso di Intel le due operazioni avvengono insieme. Per Arm non è così, e q
 Una variabile definita nel blocco sequenziale diventa condivisa nel blocco parallelo.
 Posso però definirla privata, questo significa che ogni thread ha una sua copia della variabile.
 Inoltre posso devinirla firstprivate, ovvero ogni thread ha una copia della variabile inizializzata con il valore della variabile nel blocco sequenziale.
-Oppure lastprivate, ovvero ogni thread ha una copia della variabile inizializzata con l'ultimo valore della variabile nel blocco parallelo(?).
+Oppure lastprivate: la variabile associata deve assumere il valore che aveva nel **thread** che ha elaborato l'ultima iterazione o la parte finale del calcolo.
 
 ## Direttive
 
@@ -1116,7 +1118,7 @@ Alla fine della direttiva "sections" c'è una barrier.
 - single: (come sections, ma con una sola section) assegna un blocco di codice a un solo thread, il primo che arriva, gli altri lo skippano, ma aspettano per via di una barrier implicita alla fine del bloccato
 - master: assegna solo al master(thread con id 0), non c'è barrier implicita alla fine
 - critical: Tutti i thread eseguono il blocco, ma uno alla volta, gli altri aspettano
-- ordered: nei loop assicura non ci sia data race tra dipendenze.
+- ordered: nei loop assicura non ci sia data race tra dipendenze: Se c'è una sezione di codice che deve essere eseguita **in ordine** (rispettando l'indice del ciclo), questa può essere racchiusa in una direttiva `#pragma omp ordered`. La clausola **`ordered`** può essere utilizzata solo in combinazione con il **loop parallelo**.
 - atomic: operazioni atomiche, non possono essere interrotte da altri thread
 
 ### Task
@@ -1386,7 +1388,7 @@ out-of-order-control logic: sfrutta le condizioni di Bernstein per eseguire le i
 
 ### Idea 1
 
-semplificare l'architettura eliminando tutto ciò che non è pensato per il calcolo in modo di aumentare, in termini di superficie del chip, il numero di core.
+semplificare l'architettura eliminando tutto ciò che non è pensato per il calcolo in modo di aumentare,tutto ciò che è pensato per migliorare il single instruction stream, in termini di superficie del chip, il numero di core.
 Tolgo tutto ciò che serve per fare ottimizzazione del calcolo: cache e oggetti per eliminare le bolle(out-of-order execution, branch prediction, memory pre-fetching).
 
 Perche non posso fare chip più grande? Preso un chip, questo deve avere un ciclo di clock, un segnale che si muove alla velocità della luce. la luce in un quarto di nano secondo, che sono 4 Ghz, quanto percorso fa? meno di 10 cm. Se la distanza è maggiore di 10 cm, il segnale non arriva in tempo, quindi non posso fare chip più grandi.
@@ -1422,3 +1424,74 @@ Diventa SIMT: Single Instruction Multiple Thread, un programma è fatto di tanti
 **In SIMD si associano i dati agli esegutori**, **in SIMT si associano agli esegutori i thread**. Poi il thread1 è libere di accere all'ememtno 1 dell'aray, ma è una decisione del thread.
 
 Il modello GPU è SIMT, libera dalla dipendenza della singola istruzione, sto richiedendo che la stessa istruzione di thread diversi sia eseguita in qualsiasi ordine rispetto agli altri thread.
+
+### SIMD (Single Instruction Multiple Data) e SIMT (Single Instruction Multiple Threads)
+
+**SIMD (Single Instruction Multiple Data):**
+
+- **Concetto:** Una singola istruzione viene eseguita su più dati contemporaneamente.
+- **Implementazione:** Tipica delle CPU moderne e delle GPU.
+- **Caratteristica:** Le unità SIMD lavorano in parallelo su insiemi di dati strutturati, ad esempio array o vettori.
+- **Esempio:** Un'istruzione che somma due array di numeri in parallelo.
+- **Architettura:**
+  - Le unità SIMD sono strettamente sincronizzate.
+  - Si applica un'unica istruzione a tutti gli elementi di un vettore o array in una sola operazione.
+
+---
+
+**SIMT (Single Instruction Multiple Threads): PARLARE DI LATENCY HIDING, SIMT LO RISOLVE**
+
+- **Concetto:** È un'astrazione utilizzata nelle GPU. Un'istruzione viene eseguita contemporaneamente su **più thread** , ciascuno dei quali può elaborare un proprio dato.
+- **Implementazione:** Caratteristica principale delle GPU moderne (es. NVIDIA CUDA e AMD ROCm).
+- **Caratteristica:**
+  - Ogni thread può operare indipendentemente, ma i thread di un **warp** (gruppo di thread, tipicamente 32) condividono la stessa istruzione.
+  - I thread all'interno del warp possono divergere (ad esempio, in presenza di istruzioni condizionali `if-else`), ma ciò può ridurre l'efficienza.
+- **Esempio:** Elaborazione parallela di pixel in un'immagine.
+
+---
+
+### Differenze principali:
+
+| **Aspetto**      | **SIMD**                               | **SIMT**                                    |
+| ---------------- | -------------------------------------- | ------------------------------------------- |
+| **Unità base**   | Operazioni su dati paralleli           | Thread multipli                             |
+| **Indipendenza** | I dati sono strettamente sincronizzati | Thread possono divergere                    |
+| **Efficienza**   | Ottimo per operazioni uniformi         | Flessibile, ma penalizzato dalla divergenza |
+| **Esecuzione**   | Istruzioni applicate a vettori di dati | Istruzioni applicate a gruppi di thread     |
+
+---
+
+### Perché le GPU usano SIMT?
+
+1. **Maggiore flessibilità:**
+   - Le GPU sono progettate per calcoli paralleli massicci e irregolari (ad esempio, grafica, AI, simulazioni). Il SIMT consente a ciascun thread di eseguire un proprio percorso, garantendo una maggiore adattabilità a problemi non completamente uniformi.
+2. **Elaborazione massiccia:**
+   - Una GPU moderna può contenere migliaia di core, ognuno dei quali può eseguire thread indipendenti. SIMT permette di sfruttare al meglio questa struttura massiccia.
+3. **Gestione della divergenza:**
+   - Anche se la divergenza dei thread (thread che seguono percorsi diversi a causa di `if-else`) riduce l'efficienza, la GPU può ottimizzare il carico di lavoro riallineando i thread.
+4. **Design hardware:**
+   - Il SIMT è più semplice da scalare rispetto al SIMD nel contesto delle GPU, che operano su quantità enormi di dati e workload diversificati.
+
+In sintesi, le GPU usano SIMT perché questo modello è più adatto per problemi altamente paralleli con workload non uniformi, come il rendering grafico o i calcoli scientifici, dove ogni thread può operare su dati diversi con maggiore flessibilità.
+
+- **Flessibilità nell'esecuzione dei thread:**
+  - In un'architettura SIMD, una singola istruzione opera su più "corsie" di dati contemporaneamente [1]. Questo significa che tutte le unità di elaborazione devono eseguire la stessa istruzione sullo stesso ciclo di clock [3, 4].
+  - In un'architettura SIMT, una singola istruzione viene applicata a più thread indipendenti che vengono eseguiti in parallelo [1, 2]. **Ogni thread ha il proprio registro, la propria memoria privata, il proprio stato di esecuzione, e può seguire un percorso di esecuzione indipendente** [5, 6].
+  - Questa indipendenza consente ai thread di eseguire istruzioni diverse in base a condizioni o dati specifici [1, 6].
+- **Gestione della divergenza del codice:**
+  - In un'architettura SIMD, se un'istruzione if-else causa una divergenza nel flusso di esecuzione, il processore deve serializzare l'esecuzione di entrambi i rami del codice, con un conseguente calo dell'efficienza [7, 8].
+  - In un'architettura SIMT, **i thread possono divergere, ad esempio a causa di un salto condizionato, e il multiprocessore gestisce questa divergenza** con uno stack di sincronizzazione delle diramazioni [7]. I thread divergono e, quando tutte le diramazioni giungono a conclusione, i thread si ricongiungono in un unico flusso di esecuzione [7].
+  - I warp (gruppi di thread) possono essere eseguiti in modo indipendente, anche se stanno eseguendo flussi di codice comuni o disgiunti [7].
+  - Questo permette alla GPU di essere più efficiente e flessibile in relazione a frammenti di codice divergenti [7].
+- **Efficienza nell'uso dei core:**
+  - In SIMD, l'efficienza massima si ottiene quando tutti i core eseguono lo stesso flusso di esecuzione [7]. Se non tutte le unità di elaborazione eseguono un'operazione utile (ad esempio in un ramo "else" vuoto), le prestazioni si riducono [4].
+  - **In SIMT, anche se non tutti i thread di un warp eseguono la stessa istruzione, l'hardware gestisce questa situazione, senza richiedere che i thread siano sempre perfettamente allineati** [2, 6]. Anche in presenza di divergenza, l'esecuzione del codice non viene completamente serializzata [7].
+- **Programmazione semplificata:**
+  - **Il modello SIMT consente ai programmatori di scrivere codice scalare per un singolo thread, senza doversi preoccupare di organizzare i dati in vettori per l'esecuzione SIMD** [3, 6, 9, 10].
+  - Il compilatore e l'hardware si occupano di parallelizzare l'esecuzione del codice su molti thread, rendendo la programmazione più intuitiva e semplice [10-12].
+- **Parallelismo a livello di thread e dati:**
+  - SIMT supporta sia il parallelismo a livello di thread (per thread singoli e indipendenti) sia il parallelismo a livello di dati (per thread multipli coordinati tra loro) [9].
+  - **In SIMD, il parallelismo dei dati deve essere espresso esplicitamente nel software, mentre SIMT permette di trovare parallelismo tra i dati in fase di esecuzione** [1, 3].
+- **Gestione della memoria:**
+  - In SIMT, gli accessi alla memoria da parte dei thread possono essere integrati in modo efficiente nell'accesso a un unico blocco di dati, ma non è un requisito obbligatorio [6].
+  - **In SIMD puro, gli accessi ai registri e alla memoria da parte dei diversi thread devono essere allineati secondo una struttura vettoriale regolare** [6]. SIMT non impone tali restrizioni [6].
